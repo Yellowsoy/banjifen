@@ -6,3 +6,7 @@ data/uploads/
 npm-debug.log*
 .DS_Store
 core.*
+
+# EdgeOne 构建产物与本地配置
+deploy/edgeone-dist/
+.edgeone/
