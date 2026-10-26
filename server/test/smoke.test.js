@@ -145,11 +145,12 @@ async function main() {
     assert.equal(res.data.account.role, 'super_admin');
     assert.equal(res.data.class, null);
   });
-  await ok('角色与入口不匹配时给出明确提示', async () => {
+  await ok('登录入口统一：超管从任意入口登录均按角色分流', async () => {
     const c = new Client();
     const res = await login(c, 'admin', 'admin123456', 'class');
-    assert.equal(res.status, 400);
-    assert.match(res.data.error.message, /超级管理员/);
+    assert.equal(res.status, 200, JSON.stringify(res.data));
+    assert.equal(res.data.account.role, 'super_admin');
+    assert.equal(res.data.class, null);
   });
   await ok('密码错误被拒绝', async () => {
     const c = new Client();

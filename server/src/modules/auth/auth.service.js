@@ -67,8 +67,8 @@ function assertUsable(account) {
 
 /**
  * 登录
- * @param {{username:string,password:string,entry?:'class'|'super'}} input
- *   entry 只用于给出更准确的错误提示，真正的角色以数据库为准
+ * @param {{username:string,password:string,entry?:string}} input
+ *   entry 已废弃：登录入口统一为一个，角色以后端账号数据为准，前端按返回角色自动分流
  */
 function login({ username, password, entry = 'class', userAgent = '' }) {
   const account = repo.findByUsername(username);
@@ -76,12 +76,6 @@ function login({ username, password, entry = 'class', userAgent = '' }) {
     throw new BusinessError(entry === 'super' ? '超级管理员账号不存在' : '账号不存在，请联系班主任或超级管理员', 'ACCOUNT_NOT_FOUND');
   }
   assertUsable(account);
-  if (entry === 'super' && account.role !== ROLE.SUPER) {
-    throw new BusinessError('该账号不是超级管理员，请切换到「班级成员」入口', 'ROLE_MISMATCH');
-  }
-  if (entry === 'class' && account.role === ROLE.SUPER) {
-    throw new BusinessError('超级管理员请使用「超级管理员」入口登录', 'ROLE_MISMATCH');
-  }
   if (!verifyPassword(password, account.pwdHash)) {
     throw new BusinessError('密码错误', 'BAD_PASSWORD');
   }

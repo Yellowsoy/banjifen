@@ -3,7 +3,6 @@ import { api, ApiError } from './api.js';
 import { $, $$, toast } from './ui.js';
 import { state } from './store.js';
 
-let entry = 'class';
 
 function show(screen) {
   ['#loginScreen', '#classScreen', '#superScreen'].forEach((sel) => {
@@ -64,7 +63,7 @@ async function doLogin() {
   btn.disabled = true;
   btn.textContent = '登录中…';
   try {
-    const result = await api.post('/auth/login', { username, password, entry });
+    const result = await api.post('/auth/login', { username, password });
     await route(result);
   } catch (err) {
     errBox.textContent = err.message;
@@ -76,13 +75,6 @@ async function doLogin() {
 }
 
 async function bootstrap() {
-  $('#entryTabs').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-entry]');
-    if (!btn) return;
-    entry = btn.dataset.entry;
-    $$('#entryTabs button').forEach((b) => b.classList.toggle('active', b === btn));
-    $('#loginErr').classList.add('hidden');
-  });
   $('#btnLogin').onclick = doLogin;
   ['#loginUser', '#loginPwd'].forEach((sel) => {
     $(sel).addEventListener('keydown', (e) => {
