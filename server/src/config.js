@@ -1,0 +1,73 @@
+'use strict';
+/**
+ * 集中配置：全部来自环境变量，启动时一次性校验，校验失败立即退出（fail fast）。
+ */
+const path = require('node:path');
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+
+const ROOT = path.resolve(__dirname, '../..');
+
+function required(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') {
+    if (fallback !== undefined) return fallback;
+    throw new Error(`[config] 缺少必需的环境变量 ${name}，请参考 .env.example 配置`);
+  }
+  return raw;
+}
+
+function toInt(name, fallback, min, max) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < min || n > max) {
+    throw new Error(`[config] 环境变量 ${name} 必须是 ${min}~${max} 之间的整数，当前值：${raw}`);
+  }
+  return n;
+}
+
+function resolvePath(p) {
+  return path.isAbsolute(p) ? p : path.resolve(ROOT, p);
+}
+
+const nodeEnv = required('NODE_ENV', 'development');
+
+let jwtSecret = required('JWT_SECRET', nodeEnv === 'production' ? undefined : 'dev-only-insecure-secret-change-me-32chars');
+if (jwtSecret.length < 32) {
+  throw new Error('[config] JWT_SECRET 长度必须 >= 32 个字符');
+}
+
+const config = {
+  root: ROOT,
+  env: nodeEnv,
+  isProd: nodeEnv === 'production',
+  port: toInt('PORT', 3000, 1, 65535),
+  jwtSecret,
+  accessTokenTtl: toInt('ACCESS_TOKEN_TTL', 1800, 60, 86400),
+  refreshTokenTtl: toInt('REFRESH_TOKEN_TTL', 1209600, 3600, 60 * 60 * 24 * 90),
+  corsOrigin: (process.env.CORS_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean),
+  dbFile: resolvePath(required('DB_FILE', 'data/banjifen.sqlite')),
+  uploadDir: resolvePath(required('UPLOAD_DIR', 'data/uploads')),
+  publicDir: path.join(ROOT, 'public'),
+  seed: {
+    superUsername: process.env.SUPER_USERNAME || 'admin',
+    superPassword: process.env.SUPER_PASSWORD || 'admin123456',
+    teacherUsername: process.env.DEMO_OWNER_USERNAME || '123456',
+    teacherPassword: process.env.DEMO_OWNER_PASSWORD || '123456',
+  },
+  version: '1.0.0',
+};
+
+for (const dir of [path.dirname(config.dbFile), config.uploadDir]) {
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+/** 生成随机 ID（带前缀），与原系统 id 风格一致 */
+function genId(prefix) {
+  return `${prefix}_${crypto.randomBytes(5).toString('hex')}`;
+}
+
+module.exports = { config, genId };
