@@ -42,10 +42,10 @@
   <div class="class-layout">
   <aside class="class-sidebar">
   <div class="collapse" id="addCollapse">
-    <div class="collapse-head" data-toggle="addCollapse">新增学生<span class="chev">⌄</span></div>
+    <div class="collapse-head" data-toggle="addCollapse">新增学生（含档案）<span class="chev">⌄</span></div>
     <div class="collapse-body">
       <div class="col">
-        <input id="inputName" class="input" placeholder="学生姓名" maxlength="20" />
+        <input id="inputName" class="input" placeholder="学生姓名 *" maxlength="20" />
         <div class="row">
           <input id="inputGroup" class="input" placeholder="小组（选填）" maxlength="20" />
           <select id="inputSex" class="select">
@@ -54,8 +54,32 @@
             <option value="女">女</option>
           </select>
         </div>
-        <input id="inputPosition" class="input" placeholder="职务（选填）" maxlength="20" />
+        <div class="row">
+          <input id="inputPosition" class="input" placeholder="职务（选填）" maxlength="20" />
+          <input id="inputStudentNo" class="input" placeholder="学号（对外查询用）" maxlength="24" />
+        </div>
+        <input id="inputBirthday" class="input" placeholder="出生日期，如 2015-09-01" maxlength="20" />
+
+        <div class="divider-label">家长联系方式</div>
+        <div class="row">
+          <input id="inputGuardianName" class="input" placeholder="家长姓名" maxlength="20" />
+          <select id="inputGuardianRelation" class="select" style="width:110px">
+            <option value="">关系</option>
+            <option value="父亲">父亲</option>
+            <option value="母亲">母亲</option>
+            <option value="祖父">祖父</option>
+            <option value="祖母">祖母</option>
+            <option value="外祖父">外祖父</option>
+            <option value="外祖母">外祖母</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <input id="inputGuardianPhone" class="input" placeholder="家长手机号（主）" inputmode="tel" maxlength="24" />
+        <input id="inputGuardianAltPhone" class="input" placeholder="备用联系电话（选填）" inputmode="tel" maxlength="24" />
+        <input id="inputAddress" class="input" placeholder="家庭住址（选填）" maxlength="120" />
+        <input id="inputNote" class="input" placeholder="备注（选填）" maxlength="200" />
         <button id="btnAdd" class="btn btn-primary btn-block">添加学生</button>
+        <div class="tiny muted">学号用于「成绩对外查询」的身份校验，手机号建议填全，家校联系与查询口令都要用。</div>
       </div>
     </div>
   </div>
@@ -64,12 +88,17 @@
     <div class="collapse-head" data-toggle="importCollapse">批量导入<span class="chev">⌄</span></div>
     <div class="collapse-body">
       <div class="col">
-        <div class="tiny muted">支持 .xlsx / .xls / .csv，表头需含「姓名」，可选「小组」「性别」「职务」。</div>
+        <div class="tiny muted">
+          支持 .xlsx / .xls / .csv。表头含「姓名」即可导入，系统会自动识别下列同义表头：<br />
+          学号 / 学籍号 / 编号 · 小组 · 性别 · 职务 · 出生日期 / 生日 · 家庭住址 / 住址 ·<br />
+          家长姓名 / 监护人 · 家长电话 / 家长联系方式 / 家长手机 · 与学生关系 / 关系 · 备用电话 · 备注
+        </div>
         <input id="excelFile" type="file" accept=".xlsx,.xls,.csv" class="input" style="padding-top:9px" />
         <div class="row">
           <button id="btnImportExcel" class="btn btn-primary grow">导入花名册</button>
           <button id="btnDownloadTpl" class="btn btn-ghost">模板</button>
         </div>
+        <button id="btnExportStudents" class="btn btn-ghost btn-block">导出学生档案 Excel</button>
         <div id="importResult" class="tiny muted"></div>
       </div>
     </div>
@@ -285,6 +314,9 @@
   <div class="pill-group" id="superTabs" style="margin-bottom:12px">
     <button class="pill active" data-tab="classes">班级</button>
     <button class="pill" data-tab="accounts">全部账号</button>
+    <button class="pill" data-tab="logs">操作日志</button>
+    <button class="pill" data-tab="backup">数据备份</button>
+    <button class="pill" data-tab="query">成绩查询</button>
   </div>
 
   <div class="card" id="superClassesPanel" style="margin-bottom:16px">
@@ -317,17 +349,129 @@
     <div class="pagination" id="accPager"></div>
   </div>
 
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title" style="margin-bottom:8px">回收站</div>
-    <div id="recycleBody"></div>
+  <!-- ============ 操作日志 ============ -->
+  <div class="card hidden" id="superLogsPanel" style="margin-bottom:16px">
+    <div class="between" style="margin-bottom:12px">
+      <div class="card-title">全量操作日志</div>
+      <div class="row wrap">
+        <button class="btn btn-sm btn-ghost" id="btnLogRefresh">刷新</button>
+        <button class="btn btn-sm btn-primary" id="btnLogExport">导出 CSV</button>
+        <button class="btn btn-sm btn-danger" id="btnLogClear">清理旧日志</button>
+      </div>
+    </div>
+
+    <div class="pill-group" id="logRangeTabs" style="margin-bottom:10px">
+      <button class="pill active" data-range="1">今天</button>
+      <button class="pill" data-range="7">近 7 天</button>
+      <button class="pill" data-range="30">近 30 天</button>
+      <button class="pill" data-range="0">全部</button>
+    </div>
+
+    <div class="row wrap" style="margin-bottom:10px">
+      <select id="logClass" class="select" style="width:160px"><option value="">全部班级</option></select>
+      <select id="logRole" class="select" style="width:130px">
+        <option value="">全部角色</option>
+        <option value="super_admin">超级管理员</option>
+        <option value="owner">班主任</option>
+        <option value="teacher">老师</option>
+        <option value="cadre">班干部</option>
+      </select>
+      <select id="logModule" class="select" style="width:130px">
+        <option value="">全部模块</option>
+        <option value="class">班级业务</option>
+        <option value="members">成员管理</option>
+        <option value="super">超管后台</option>
+        <option value="auth">登录鉴权</option>
+        <option value="backup">备份恢复</option>
+        <option value="query">对外查询</option>
+      </select>
+      <select id="logResult" class="select" style="width:120px">
+        <option value="">全部结果</option>
+        <option value="success">成功</option>
+        <option value="failed">失败 / 被拒绝</option>
+      </select>
+      <input id="logKeyword" class="input grow" placeholder="搜索姓名 / 摘要 / 动作关键词" style="min-width:160px" />
+    </div>
+
+    <div class="tiny muted" style="margin-bottom:8px">
+      共 <b id="logTotal" class="num">0</b> 条。点击任意一行可查看变更前后快照。
+    </div>
+    <div style="overflow-x:auto"><table class="admin-table" id="logTable"></table></div>
+    <div class="pagination" id="logPager"></div>
   </div>
 
-  <div class="card">
-    <div class="between" style="margin-bottom:8px">
-      <div class="card-title">操作日志</div>
-      <button class="btn btn-sm btn-ghost" id="btnAuditRefresh">刷新</button>
+  <!-- ============ 数据备份 ============ -->
+  <div class="card hidden" id="superBackupPanel" style="margin-bottom:16px">
+    <div class="card-title" style="margin-bottom:10px">导出备份</div>
+    <div class="row wrap" style="margin-bottom:10px">
+      <select id="backupClass" class="select grow" style="min-width:180px"><option value="">选择一个班级</option></select>
+      <button class="btn btn-sm btn-primary" id="btnBackupClass">导出班级备份</button>
+      <button class="btn btn-sm btn-ghost" id="btnBackupPlatform">导出平台全量备份</button>
     </div>
-    <div id="auditBody"></div>
+    <div class="tiny muted" style="margin-bottom:14px">
+      班级备份含：班级资料、成员、学生档案、积分记录、快捷规则、礼物、兑换记录、考试与成绩、座位表；<br />
+      平台全量备份含：全部班级 + 全部账号档案 + 回收站快照 + 最近 2 万条操作日志。<br />
+      <b>出于安全，备份文件不包含任何登录密码</b>，导入后相关账号需由超级管理员重新设置密码。
+    </div>
+
+    <div class="card-title" style="margin-bottom:10px">导入备份</div>
+    <div class="col">
+      <input id="backupFile" type="file" accept=".json,application/json" class="input" style="padding-top:9px" />
+      <div class="row wrap">
+        <select id="backupMode" class="select" style="width:170px">
+          <option value="create">恢复为新班级</option>
+          <option value="replace">覆盖现有班级</option>
+        </select>
+        <select id="backupTargetClass" class="select grow" style="min-width:170px"><option value="">选择被覆盖的班级</option></select>
+        <input id="backupClassName" class="input grow" placeholder="新班级名称（留空用备份原名）" style="min-width:170px" />
+      </div>
+      <textarea id="backupText" class="textarea" rows="3" placeholder="也可以直接把备份 JSON 内容粘贴到这里（与上传文件二选一）"></textarea>
+      <button class="btn btn-primary btn-block" id="btnBackupImport">开始导入</button>
+      <div id="backupResult" class="tiny muted"></div>
+    </div>
+  </div>
+
+  <!-- ============ 成绩对外查询 ============ -->
+  <div class="card hidden" id="superQueryPanel" style="margin-bottom:16px">
+    <div class="card-title" style="margin-bottom:10px">生成对外查询口令</div>
+    <div class="row wrap" style="margin-bottom:8px">
+      <select id="qtClass" class="select grow" style="min-width:180px"><option value="">选择班级</option></select>
+      <input id="qtName" class="input grow" placeholder="用途备注，如：八年级期中家长会" maxlength="40" style="min-width:170px" />
+    </div>
+    <div class="row wrap" style="margin-bottom:10px">
+      <select id="qtScope" class="select" style="width:150px">
+        <option value="scores">仅成绩</option>
+        <option value="points">仅积分</option>
+        <option value="all">成绩 + 积分</option>
+      </select>
+      <select id="qtMode" class="select" style="width:190px">
+        <option value="name_no">姓名 + 学号</option>
+        <option value="phone">姓名 + 家长手机后 4 位</option>
+        <option value="none">仅姓名</option>
+      </select>
+      <select id="qtDays" class="select" style="width:130px">
+        <option value="0">长期有效</option>
+        <option value="7">7 天</option>
+        <option value="30">30 天</option>
+        <option value="180">180 天</option>
+      </select>
+      <button class="btn btn-primary" id="btnQtCreate">生成口令</button>
+    </div>
+    <div class="tiny muted" style="margin-bottom:14px">
+      把「查询地址 + 口令」发给家长，家长自助查询，<b>无需注册登录</b>；一个口令只能查到命中的那一名学生，
+      家长手机号一律脱敏展示。口令可随时停用或删除，停用后链接立即失效。
+    </div>
+
+    <div class="between" style="margin-bottom:8px">
+      <div class="card-title">已有口令（<span id="qtCount" class="num">0</span>）</div>
+      <button class="btn btn-sm btn-ghost" id="btnQtRefresh">刷新</button>
+    </div>
+    <div style="overflow-x:auto"><table class="admin-table" id="qtTable"></table></div>
+  </div>
+
+  <div class="card" id="recycleCard" style="margin-bottom:16px">
+    <div class="card-title" style="margin-bottom:8px">回收站</div>
+    <div id="recycleBody"></div>
   </div>
 </div>
 

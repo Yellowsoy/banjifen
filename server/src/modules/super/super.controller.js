@@ -140,6 +140,104 @@ const auditList = asyncHandler(async (req, res) => {
   res.json(service.listAudit(query));
 });
 
+/* ==================== 全量操作日志 ==================== */
+
+const logQuery = z.object({
+  from: z.coerce.number().int().min(0).optional(),
+  to: z.coerce.number().int().min(0).optional(),
+  classId: z.string().max(64).optional().default(''),
+  actorId: z.string().max(64).optional().default(''),
+  module: z.string().max(32).optional().default(''),
+  action: z.string().max(64).optional().default(''),
+  actorRole: z.string().max(20).optional().default(''),
+  result: z.enum(['', 'success', 'failed']).optional().default(''),
+  keyword: z.string().trim().max(40).optional().default(''),
+  page: z.coerce.number().int().min(1).max(10000).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(200).optional().default(30),
+});
+
+const listLogs = asyncHandler(async (req, res) => {
+  res.json(service.listOperationLogs(parse(logQuery, req.query)));
+});
+
+const exportLogs = asyncHandler(async (req, res) => {
+  const query = parse(logQuery, req.query);
+  const csv = service.operationLogsCsv({ ...query, page: 1, pageSize: 10000 });
+  service.__auditLogExport && service.__auditLogExport(req.auth);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent('操作日志.csv')}`);
+  res.send(csv);
+});
+
+const clearLogs = asyncHandler(async (req, res) => {
+  const body = parse(z.object({ days: z.coerce.number().int().min(1).max(3650).default(180) }), req.body);
+  res.json(service.clearOperationLogs(req.auth, body.days));
+});
+
+/* ==================== 数据备份与恢复 ==================== */
+
+const exportClassBackup = asyncHandler(async (req, res) => {
+  const pack = service.exportClassBackup(req.auth, req.params.id);
+  const name = `${pack.class.name || '班级'}-备份-${new Date().toISOString().slice(0, 10)}.json`;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
+  res.send(JSON.stringify(pack, null, 2));
+});
+
+const exportPlatformBackup = asyncHandler(async (req, res) => {
+  const pack = service.exportPlatformBackup(req.auth);
+  const name = `班级积分管理-全量备份-${new Date().toISOString().slice(0, 10)}.json`;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
+  res.send(JSON.stringify(pack, null, 2));
+});
+
+const importBackupHandler = asyncHandler(async (req, res) => {
+  const opts = {
+    mode: String((req.body && req.body.mode) || 'create') === 'replace' ? 'replace' : 'create',
+    targetClassId: (req.body && req.body.targetClassId) || '',
+    className: (req.body && req.body.className) || '',
+    includeAccounts: req.body && req.body.includeAccounts !== false,
+  };
+  let text = '';
+  if (req.file && req.file.buffer) {
+    text = req.file.buffer.toString('utf8');
+  } else if (req.body && typeof req.body.text === 'string') {
+    text = req.body.text;
+  }
+  if (!text) throw new Error('请上传备份文件或粘贴备份内容');
+  res.json(service.importBackup(req.auth, { text, ...opts }));
+});
+
+/* ==================== 成绩对外查询口令 ==================== */
+
+const queryTokenList = asyncHandler(async (req, res) => {
+  res.json({ items: service.listQueryTokens() });
+});
+
+const queryTokenCreate = asyncHandler(async (req, res) => {
+  const body = parse(
+    z.object({
+      classId: id,
+      name: z.string().trim().max(40).optional().default(''),
+      scope: z.enum(['scores', 'points', 'all']).optional().default('scores'),
+      mode: z.enum(['name_no', 'phone', 'none']).optional().default('name_no'),
+      days: z.coerce.number().int().min(0).max(3650).optional().default(0),
+    }),
+    req.body
+  );
+  res.status(201).json(service.createQueryToken(req.auth, body));
+});
+
+const queryTokenToggle = asyncHandler(async (req, res) => {
+  const body = parse(z.object({ enabled: z.coerce.boolean() }), req.body);
+  res.json(service.toggleQueryToken(req.auth, req.params.id, body.enabled));
+});
+
+const queryTokenDelete = asyncHandler(async (req, res) => {
+  res.json(service.deleteQueryToken(req.auth, req.params.id));
+});
+
 const deletedClasses = asyncHandler(async (req, res) => {
   res.json(service.deletedClasses());
 });
@@ -169,4 +267,17 @@ module.exports = {
   auditList,
   deletedClasses,
   exportClasses,
+  // 全量操作日志
+  listLogs,
+  exportLogs,
+  clearLogs,
+  // 数据备份与恢复
+  exportClassBackup,
+  exportPlatformBackup,
+  importBackup: importBackupHandler,
+  // 对外查询口令
+  queryTokenList,
+  queryTokenCreate,
+  queryTokenToggle,
+  queryTokenDelete,
 };

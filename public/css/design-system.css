@@ -176,6 +176,28 @@ img { max-width: 100%; display: block; }
 /* ======================= 表单 ======================= */
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field > label { font-size: var(--t-xs); font-weight: 700; color: var(--c-ink-3); letter-spacing: .04em; text-transform: uppercase; }
+
+/* 分区小标题：用于表单内部的逻辑分组（如「家长联系方式」） */
+.divider-label {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--t-xs);
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: var(--c-ink-3);
+  margin-top: 2px;
+}
+.divider-label::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--c-line);
+}
+/* 日志详情弹层里的键值行，允许超长内容换行 */
+.sheet-item > .tiny { word-break: break-all; }
+/* 日志表格的整行可点击 */
+tr.log-row { cursor: pointer; }
 .input, .select, .textarea {
   width: 100%;
   height: 44px;
@@ -369,6 +391,46 @@ img { max-width: 100%; display: block; }
   .login-page { grid-template-columns: 1.05fr 1fr; }
   .login-hero { display: flex; }
   .login-card { padding: var(--s-10) var(--s-8); }
+}
+
+/* ======================= 对外查询页（免登录） ======================= */
+.query-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--c-primary-50) 0%, var(--c-surface) 320px);
+  padding: var(--s-5) var(--gutter) var(--s-10);
+}
+.query-wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--s-4); }
+.query-head { display: flex; align-items: center; gap: var(--s-3); padding-top: var(--s-3); }
+.query-logo {
+  flex: 0 0 auto; width: 42px; height: 42px; border-radius: var(--r-md);
+  background: var(--c-primary); color: #fff; font-weight: 900; font-size: 19px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 16px rgba(59, 111, 245, .28);
+}
+.query-title { font-size: var(--t-lg); font-weight: 900; letter-spacing: -0.01em; }
+.query-card { padding: var(--s-6) var(--s-5); }
+.query-token-input { text-transform: uppercase; letter-spacing: .14em; font-weight: 800; }
+.query-result-head {
+  display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap;
+  padding-bottom: var(--s-3); border-bottom: 1px dashed var(--c-line);
+}
+.query-avatar {
+  flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%;
+  background: var(--c-primary-50); color: var(--c-primary-600);
+  display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 17px;
+}
+.query-block-title { font-size: var(--t-xs); font-weight: 800; color: var(--c-ink-3); letter-spacing: .06em; margin: var(--s-4) 0 var(--s-2); }
+.query-kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s-2); }
+.query-kv-item { background: var(--c-surface-2); border-radius: var(--r-sm); padding: 8px 12px; }
+.query-kv-item .k { font-size: 11px; color: var(--c-ink-4); font-weight: 700; }
+.query-kv-item .v { font-size: var(--t-sm); font-weight: 700; word-break: break-all; }
+.query-exam { border: 1px solid var(--c-line-2); border-radius: var(--r-md); padding: 10px 12px; margin-bottom: 8px; }
+.query-exam .name { font-weight: 800; font-size: var(--t-sm); }
+.query-exam .score { font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.query-bar { height: 6px; border-radius: 99px; background: var(--c-line-2); overflow: hidden; margin-top: 6px; }
+.query-bar > i { display: block; height: 100%; background: var(--c-primary); border-radius: 99px; }
+@media (min-width: 640px) {
+  .query-card { padding: var(--s-8) var(--s-7); }
 }
 
 /* ======================= App 骨架（班级端） ======================= */

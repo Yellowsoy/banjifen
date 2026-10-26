@@ -74,6 +74,13 @@ class Client {
   put(url, body) { return this.req('PUT', url, body); }
   del(url) { return this.req('DELETE', url); }
   form(url, formData) { return this.req('POST', url, formData, true); }
+
+  /** 二进制响应（Excel / 备份文件）：返回原始 buffer 供解析 */
+  async raw(url) {
+    const res = await fetch(BASE + url, { method: 'GET', headers: { 'x-requested-with': 'fetch', cookie: this.header() } });
+    this.store(res);
+    return { status: res.status, buffer: Buffer.from(await res.arrayBuffer()) };
+  }
 }
 
 function makeXlsx(rows) {
@@ -510,6 +517,215 @@ async function main() {
     assert.equal((await c.get('/api/auth/me')).status, 200);
     await c.post('/api/auth/logout');
     assert.equal((await c.get('/api/class/overview')).status, 401);
+  });
+
+  /* =========================================================
+     [7] 学生档案扩展 / 全量操作日志 / 备份恢复 / 对外查询
+     ========================================================= */
+  console.log('\n[7] 学生档案、审计日志、备份与对外查询');
+
+  const ownerB = new Client();
+  let createdStudentId = '';
+
+  await ok('班主任可写入学生档案（学号/家长联系方式等）', async () => {
+    await login(ownerB, '123456', '123456');
+    const res = await ownerB.post('/api/class/students', {
+      name: '档案测试',
+      groupName: '测试组',
+      sex: '女',
+      position: '组长',
+      studentNo: 'SN-001',
+      birthday: '2013-03-03',
+      address: '测试市测试路 8 号',
+      guardianName: '王小二',
+      guardianPhone: '13900001111',
+      guardianRelation: '父亲',
+      note: '冒烟用例',
+    });
+    assert.equal(res.status, 201, JSON.stringify(res.data));
+    createdStudentId = res.data.id;
+    assert.equal(res.data.studentNo, 'SN-001');
+    assert.equal(res.data.guardianName, '王小二');
+    assert.equal(res.data.guardianPhone, '13900001111');
+  });
+
+  await ok('可编辑学生档案并保留字段', async () => {
+    const res = await ownerB.patch(`/api/class/students/${createdStudentId}`, {
+      guardianPhone: '13900002222',
+      address: '测试市测试路 9 号',
+    });
+    assert.equal(res.status, 200, JSON.stringify(res.data));
+    assert.equal(res.data.guardianPhone, '13900002222');
+    assert.equal(res.data.address, '测试市测试路 9 号');
+    assert.equal(res.data.studentNo, 'SN-001', '未提交的字段不应被清空');
+  });
+
+  await ok('联系电话格式非法时返回 422', async () => {
+    const res = await ownerB.post('/api/class/students', { name: '非法号码', guardianPhone: 'abcabc' });
+    assert.equal(res.status, 422);
+  });
+
+  await ok('可导出学生档案 Excel（含家长联系方式）', async () => {
+    const res = await ownerB.raw('/api/class/students/export.xlsx');
+    assert.equal(res.status, 200);
+    const wb = XLSX.read(res.buffer, { type: 'buffer' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+    const hit = rows.find((r) => r['姓名'] === '档案测试');
+    assert.ok(hit, '导出内容应包含该学生');
+    assert.equal(String(hit['家长电话']), '13900002222');
+  });
+
+  await ok('班级端写操作会落入全量操作日志（含操作人与摘要）', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const res = await superC.get('/api/super/logs?pageSize=50');
+    assert.equal(res.status, 200, JSON.stringify(res.data));
+    assert.ok(res.data.items.length > 0, '应产生日志记录');
+    const created = res.data.items.find((i) => i.action === 'student.create' && String(i.summary).includes('档案测试'));
+    assert.ok(created, '应记录新增学生动作');
+    assert.ok(['owner', 'teacher', 'cadre'].includes(created.actor_role), `操作角色应被记录，实际：${created.actor_role}`);
+    assert.ok(created.actor_name, '应记录操作者姓名');
+    assert.ok(created.class_name, '日志应带班级名');
+    assert.ok(created.summary.includes('新增学生'), '摘要应说明动作');
+  });
+
+  await ok('操作日志支持按模块/关键词筛选，并可导出 CSV', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const res = await superC.get('/api/super/logs?module=class&keyword=档案测试');
+    assert.ok(res.data.items.length > 0, '关键词筛选应有结果');
+    assert.ok(res.data.items.every((i) => i.module === 'class'));
+    const csv = await superC.get('/api/super/logs/export.csv');
+    assert.equal(csv.status, 200);
+    assert.ok(String(csv.data).includes('摘要'), 'CSV 应包含表头');
+  });
+
+  await ok('超管可导出班级数据备份（JSON，不含密码散列）', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const list = (await superC.get('/api/super/classes?pageSize=50')).data;
+    const target = list.items.filter((c) => (c.studentCount || 0) > 0)[0] || list.items[0];
+    assert.ok(target, '应至少有一个班级');
+    const res = await superC.raw(`/api/super/backup/class/${target.id}`);
+    assert.equal(res.status, 200);
+    const raw = res.buffer.toString('utf8');
+    const pack = JSON.parse(raw);
+    assert.equal(pack.format, 'banjifen-backup');
+    assert.ok(pack.students.length > 0, '备份应含学生');
+    assert.ok(!raw.includes('pwd_hash'), '备份不得包含口令散列');
+    globalThis.__backupPack = raw;
+  });
+
+  await ok('超管可导出平台级全量备份', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const res = await superC.raw('/api/super/backup/platform');
+    assert.equal(res.status, 200);
+    const pack = JSON.parse(res.buffer.toString('utf8'));
+    assert.equal(pack.scope, 'platform');
+    assert.ok(pack.classes.length >= 1, '应包含班级数据');
+  });
+
+  await ok('导入班级备份可恢复为新班级（学生与家长信息一并回来）', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const res = await superC.post('/api/super/backup/import', {
+      text: globalThis.__backupPack,
+      mode: 'create',
+      className: '备份恢复班',
+    });
+    assert.equal(res.status, 200, JSON.stringify(res.data));
+    assert.equal(res.data.name, '备份恢复班');
+    assert.ok(res.data.counts.students > 0, '恢复后应有学生');
+    const back = await superC.raw(`/api/super/backup/class/${res.data.classId}`);
+    const restored = JSON.parse(back.buffer.toString('utf8'));
+    const hit = restored.students.find((s) => s.name === '档案测试');
+    assert.ok(hit, '恢复的班级应含原学生');
+    assert.equal(hit.guardian_phone, '13900002222', '家长电话应一并恢复');
+  });
+
+  await ok('非法备份文件被拒绝导入', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const res = await superC.post('/api/super/backup/import', { text: '{"hello":"world"}' });
+    assert.equal(res.status, 400);
+  });
+
+  await ok('超管可生成成绩对外查询口令', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const list = (await superC.get('/api/super/classes?pageSize=50')).data;
+    // 优先用恢复出来的班（里面有带学号的学生），兜底取第一个有学生的班
+    const target =
+      list.items.find((c) => c.name === '备份恢复班') ||
+      list.items.filter((c) => (c.studentCount || 0) > 0)[0] ||
+      list.items[0];
+    const res = await superC.post('/api/super/query-tokens', {
+      classId: target.id,
+      scope: 'all',
+      mode: 'name_no',
+      name: '期末成绩自助查询',
+    });
+    assert.equal(res.status, 201, JSON.stringify(res.data));
+    globalThis.__queryToken = res.data.token;
+    assert.ok(globalThis.__queryToken);
+  });
+
+  await ok('家长可用口令 + 学号查询成绩（免登录、号码脱敏）', async () => {
+    const pub = new Client();
+    const info = (await pub.get(`/api/public/query/${globalThis.__queryToken}`)).data;
+    assert.ok(info.className, '应返回班级名');
+    assert.ok(Array.isArray(info.fields));
+    const res = await pub.post(`/api/public/query/${globalThis.__queryToken}`, {
+      name: '档案测试',
+      studentNo: 'SN-001',
+    });
+    assert.equal(res.status, 200, JSON.stringify(res.data));
+    assert.equal(res.data.student.name, '档案测试');
+    assert.equal(res.data.student.studentNo, 'SN-001');
+    assert.ok(String(res.data.student.guardianPhoneMasked).includes('****'), '家长号码应脱敏');
+  });
+
+  await ok('学号不匹配时查询被拒绝（不外泄他人数据）', async () => {
+    const pub = new Client();
+    const res = await pub.post(`/api/public/query/${globalThis.__queryToken}`, {
+      name: '档案测试',
+      studentNo: 'WRONG-NO',
+    });
+    assert.equal(res.status, 404);
+  });
+
+  await ok('停用口令后查询立即失效', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const list = (await superC.get('/api/super/query-tokens')).data;
+    const target = list.items.find((t) => t.token === globalThis.__queryToken);
+    const off = await superC.patch(`/api/super/query-tokens/${target.id}`, { enabled: false });
+    assert.equal(off.status, 200);
+    const pub = new Client();
+    const res = await pub.post(`/api/public/query/${globalThis.__queryToken}`, {
+      name: '档案测试',
+      studentNo: 'SN-001',
+    });
+    assert.equal(res.status, 400);
+  });
+
+  await ok('失败操作也被记录，可按结果筛选（便于追溯）', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const res = await superC.get('/api/super/logs?result=failed&pageSize=50');
+    assert.equal(res.status, 200);
+    assert.ok(Array.isArray(res.data.items));
+    assert.ok(res.data.items.every((i) => i.result === 'failed'), '筛选结果应全为失败记录');
+    assert.ok(res.data.items.some((i) => String(i.summary).includes('操作被拒绝')), '越权尝试应被记录');
+  });
+
+  await ok('可清理过期操作日志', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const res = await superC.post('/api/super/logs/clear', { days: 3650 });
+    assert.equal(res.status, 200, JSON.stringify(res.data));
+    assert.ok(res.data.removed >= 0);
   });
 
   console.log(`\n结果：通过 ${passed}，失败 ${failed}`);

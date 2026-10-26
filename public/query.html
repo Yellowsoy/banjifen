@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#3B6FF5" />
+<meta name="description" content="学生成绩与积分自助查询：输入班主任提供的查询口令，即可查看本人成绩、班级排名与积分情况。" />
+<meta name="robots" content="noindex" />
+<title>成绩查询 · 班级积分管理</title>
+<link rel="stylesheet" href="./css/design-system.css" />
+</head>
+<body>
+
+<div class="query-page">
+  <div class="query-wrap">
+    <header class="query-head">
+      <div class="query-logo">积</div>
+      <div class="grow">
+        <div class="query-title">学生成绩与积分查询</div>
+        <div class="tiny muted" id="headMeta">请输入老师发送的查询口令</div>
+      </div>
+    </header>
+
+    <!-- 第一步：口令 -->
+    <main class="card query-card" id="stepTokenCard">
+      <div class="col">
+        <div class="field">
+          <label>查询口令</label>
+          <input id="qToken" class="input query-token-input" placeholder="例：8F2K9QD1ZP" maxlength="24" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="err-text hidden" id="qErr"></div>
+        <button id="btnNext" class="btn btn-primary btn-block">下一步</button>
+        <div class="tips-box">
+          口令由班主任或超级管理员生成后发送给家长，<b>不需要注册账号、不需要下载 App</b><br />
+          口令被停用或过期后，本页面会立即无法查询，请联系老师重新获取
+        </div>
+      </div>
+    </main>
+
+    <!-- 第二步：身份校验 -->
+    <main class="card query-card hidden" id="stepFormCard">
+      <div class="col">
+        <div class="between">
+          <div>
+            <div class="query-title" style="font-size:16px" id="formClassName">—</div>
+            <div class="tiny muted" id="formHint"></div>
+          </div>
+          <button class="btn btn-sm btn-ghost" id="btnBack">换口令</button>
+        </div>
+        <div class="field">
+          <label>学生姓名</label>
+          <input id="qName" class="input" placeholder="请输入学生完整姓名" maxlength="20" autocomplete="off" />
+        </div>
+        <div class="field hidden" id="fStudentNo">
+          <label>学号</label>
+          <input id="qStudentNo" class="input" placeholder="请输入学号" maxlength="24" autocomplete="off" />
+        </div>
+        <div class="field hidden" id="fPhoneTail">
+          <label>家长手机号后 4 位</label>
+          <input id="qPhoneTail" class="input" placeholder="4 位数字" inputmode="numeric" maxlength="4" autocomplete="off" />
+        </div>
+        <div class="err-text hidden" id="qErr2"></div>
+        <button id="btnQuery" class="btn btn-primary btn-block">查 询</button>
+      </div>
+    </main>
+
+    <!-- 结果 -->
+    <section id="resultCard" class="hidden"></section>
+
+    <footer class="tiny muted" style="text-align:center;line-height:1.9">
+      本页面只展示所查询学生本人的数据，不展示班级名单与他人信息；<br />
+      家长联系方式已做脱敏处理。如遇问题请联系班主任。
+    </footer>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script type="module" src="./js/query.js"></script>
+</body>
+</html>

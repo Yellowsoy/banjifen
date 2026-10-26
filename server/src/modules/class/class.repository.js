@@ -1,7 +1,10 @@
 'use strict';
 const db = require('../../db');
 
-const STUDENT_FIELDS = 'id, name, group_name AS groupName, sex, position, points, created_at AS createdAt';
+const STUDENT_FIELDS = `id, name, group_name AS groupName, sex, position, points, created_at AS createdAt,
+  student_no AS studentNo, birthday, address,
+  guardian_name AS guardianName, guardian_phone AS guardianPhone,
+  guardian_relation AS guardianRelation, guardian_alt_phone AS guardianAltPhone, note`;
 
 /* ---------------- 班级资料 ---------------- */
 function getProfile(classId) {
@@ -85,22 +88,52 @@ function findStudentsByNames(classId) {
 
 function insertStudent(classId, student) {
   db.run(
-    `INSERT INTO students (id, class_id, name, group_name, sex, position, points, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [student.id, classId, student.name, student.groupName || '', student.sex || '', student.position || '', student.points || 0, student.createdAt || Date.now()]
+    `INSERT INTO students
+      (id, class_id, name, group_name, sex, position, points, created_at,
+       student_no, birthday, address, guardian_name, guardian_phone, guardian_relation, guardian_alt_phone, note)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      student.id,
+      classId,
+      student.name,
+      student.groupName || '',
+      student.sex || '',
+      student.position || '',
+      student.points || 0,
+      student.createdAt || Date.now(),
+      student.studentNo || '',
+      student.birthday || '',
+      student.address || '',
+      student.guardianName || '',
+      student.guardianPhone || '',
+      student.guardianRelation || '',
+      student.guardianAltPhone || '',
+      student.note || '',
+    ]
   );
   return findStudent(classId, student.id);
 }
 
+/** 学生可更新字段 → 列名映射（含档案扩展字段） */
+const STUDENT_PATCH_MAP = [
+  ['name', 'name'],
+  ['groupName', 'group_name'],
+  ['sex', 'sex'],
+  ['position', 'position'],
+  ['studentNo', 'student_no'],
+  ['birthday', 'birthday'],
+  ['address', 'address'],
+  ['guardianName', 'guardian_name'],
+  ['guardianPhone', 'guardian_phone'],
+  ['guardianRelation', 'guardian_relation'],
+  ['guardianAltPhone', 'guardian_alt_phone'],
+  ['note', 'note'],
+];
+
 function updateStudent(classId, id, patch) {
   const fields = [];
   const params = [];
-  for (const [key, column] of [
-    ['name', 'name'],
-    ['groupName', 'group_name'],
-    ['sex', 'sex'],
-    ['position', 'position'],
-  ]) {
+  for (const [key, column] of STUDENT_PATCH_MAP) {
     if (patch[key] !== undefined) {
       fields.push(`${column} = ?`);
       params.push(patch[key]);

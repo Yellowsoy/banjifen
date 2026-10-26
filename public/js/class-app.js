@@ -376,21 +376,60 @@ export async function openBatchModal() {
 }
 
 /* ================= 学生编辑 / 历史 ================= */
+/** 学生档案字段集合：新增、编辑、列表详情三处共用，保证口径一致 */
+const PROFILE_FIELDS = [
+  ['editStudentNo', 'inputStudentNo', 'studentNo'],
+  ['editBirthday', 'inputBirthday', 'birthday'],
+  ['editAddress', 'inputAddress', 'address'],
+  ['editGuardianName', 'inputGuardianName', 'guardianName'],
+  ['editGuardianPhone', 'inputGuardianPhone', 'guardianPhone'],
+  ['editGuardianRelation', 'inputGuardianRelation', 'guardianRelation'],
+  ['editGuardianAltPhone', 'inputGuardianAltPhone', 'guardianAltPhone'],
+  ['editNote', 'inputNote', 'note'],
+];
+
 export function openEditModal(student) {
+  const val = (key) => escapeHtml(student[key] || '');
   openModal({
-    title: '编辑学生',
+    title: `编辑学生 · ${student.name}`,
     body: `
       <div class="col">
-        <div class="field"><label>姓名</label><input class="input" id="editName" value="${escapeHtml(student.name)}" maxlength="20" /></div>
-        <div class="field"><label>小组</label><input class="input" id="editGroup" value="${escapeHtml(student.groupName || '')}" maxlength="20" /></div>
-        <div class="field"><label>性别</label>
-          <select class="select" id="editSex">
-            <option value="" ${!student.sex ? 'selected' : ''}>未填写</option>
-            <option value="男" ${student.sex === '男' ? 'selected' : ''}>男</option>
-            <option value="女" ${student.sex === '女' ? 'selected' : ''}>女</option>
-          </select>
+        <div class="row">
+          <div class="field grow"><label>姓名</label><input class="input" id="editName" value="${escapeHtml(student.name)}" maxlength="20" /></div>
+          <div class="field grow"><label>学号</label><input class="input" id="editStudentNo" value="${val('studentNo')}" maxlength="24" /></div>
         </div>
-        <div class="field"><label>职务</label><input class="input" id="editPosition" value="${escapeHtml(student.position || '')}" maxlength="20" /></div>
+        <div class="row">
+          <div class="field grow"><label>小组</label><input class="input" id="editGroup" value="${escapeHtml(student.groupName || '')}" maxlength="20" /></div>
+          <div class="field grow"><label>职务</label><input class="input" id="editPosition" value="${escapeHtml(student.position || '')}" maxlength="20" /></div>
+        </div>
+        <div class="row">
+          <div class="field grow"><label>性别</label>
+            <select class="select" id="editSex">
+              <option value="" ${!student.sex ? 'selected' : ''}>未填写</option>
+              <option value="男" ${student.sex === '男' ? 'selected' : ''}>男</option>
+              <option value="女" ${student.sex === '女' ? 'selected' : ''}>女</option>
+            </select>
+          </div>
+          <div class="field grow"><label>出生日期</label><input class="input" id="editBirthday" value="${val('birthday')}" maxlength="20" placeholder="2015-09-01" /></div>
+        </div>
+
+        <div class="divider-label">家长联系方式</div>
+        <div class="row">
+          <div class="field grow"><label>家长姓名</label><input class="input" id="editGuardianName" value="${val('guardianName')}" maxlength="20" /></div>
+          <div class="field" style="width:120px"><label>关系</label>
+            <select class="select" id="editGuardianRelation">
+              ${['', '父亲', '母亲', '祖父', '祖母', '外祖父', '外祖母', '其他']
+                .map((r) => `<option value="${r}" ${student.guardianRelation === r ? 'selected' : ''}>${r || '未填写'}</option>`)
+                .join('')}
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field grow"><label>家长手机号</label><input class="input" id="editGuardianPhone" value="${val('guardianPhone')}" inputmode="tel" maxlength="24" /></div>
+          <div class="field grow"><label>备用电话</label><input class="input" id="editGuardianAltPhone" value="${val('guardianAltPhone')}" inputmode="tel" maxlength="24" /></div>
+        </div>
+        <div class="field"><label>家庭住址</label><input class="input" id="editAddress" value="${val('address')}" maxlength="120" /></div>
+        <div class="field"><label>备注</label><input class="input" id="editNote" value="${val('note')}" maxlength="200" /></div>
       </div>`,
     footer: '<button class="btn btn-ghost" data-close>取消</button><button class="btn btn-primary" id="editSave">保存修改</button>',
     onMount(m) {
@@ -401,6 +440,9 @@ export function openEditModal(student) {
           sex: m.querySelector('#editSex').value,
           position: m.querySelector('#editPosition').value.trim(),
         };
+        PROFILE_FIELDS.forEach(([editId, , key]) => {
+          payload[key] = m.querySelector(`#${editId}`).value.trim();
+        });
         if (!payload.name) return toast('姓名不能为空', 'err');
         try {
           await api.patch(`/class/students/${student.id}`, payload);
@@ -639,15 +681,21 @@ export async function mountClassApp({ logout }) {
   const addStudent = async () => {
     const name = $('#inputName').value.trim();
     if (!name) return toast('请输入学生姓名', 'err');
+    const payload = { name };
+    ['Group#groupName', 'Sex#sex', 'Position#position'].forEach((rule) => {
+      const [suffix, key] = rule.split('#');
+      payload[key] = $(`#input${suffix}`).value.trim();
+    });
+    PROFILE_FIELDS.forEach(([, inputId, key]) => {
+      payload[key] = $(`#${inputId}`).value.trim();
+    });
     try {
-      await api.post('/class/students', {
-        name,
-        groupName: $('#inputGroup').value.trim(),
-        sex: $('#inputSex').value,
-        position: $('#inputPosition').value.trim(),
-      });
-      $('#inputName').value = '';
-      $('#inputPosition').value = '';
+      await api.post('/class/students', payload);
+      ['#inputName', '#inputPosition', '#inputStudentNo', '#inputBirthday', '#inputGuardianName', '#inputGuardianPhone', '#inputGuardianAltPhone', '#inputAddress', '#inputNote'].forEach(
+        (sel) => {
+          $(sel).value = '';
+        }
+      );
       toast(`已添加 ${name}`, 'ok');
       await Promise.all([loadStudents(), refreshOverview(), loadGroups()]);
     } catch (err) {
@@ -676,6 +724,10 @@ export async function mountClassApp({ logout }) {
     return undefined;
   };
   $('#btnDownloadTpl').onclick = () => api.download('/class/students/template');
+  $('#btnExportStudents').onclick = () => {
+    api.download('/class/students/export.xlsx');
+    toast('正在导出学生档案…', 'ok');
+  };
 
   $('#studentList').addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-act]');

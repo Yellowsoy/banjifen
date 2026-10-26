@@ -93,6 +93,11 @@ const studentTemplate = asyncHandler(async (req, res) => {
   xlsxResponse(res, '花名册导入模板.xlsx', service.studentTemplate());
 });
 
+/** 导出本班学生花名册（含家长联系方式等完整档案），可直接编辑后导入 */
+const exportStudents = asyncHandler(async (req, res) => {
+  xlsxResponse(res, `学生档案-${new Date().toISOString().slice(0, 10)}.xlsx`, service.studentsWorkbook(req.auth.classId));
+});
+
 const listGroups = asyncHandler(async (req, res) => {
   const query = parse(
     z.object({
@@ -278,6 +283,7 @@ module.exports = {
   deleteStudent,
   importStudents,
   studentTemplate,
+  exportStudents,
   listGroups,
   applyPoints,
   listLogs,

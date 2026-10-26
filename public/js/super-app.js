@@ -90,6 +90,25 @@ async function loadClasses() {
       loadClasses();
     },
   });
+  syncClassSelects();
+}
+
+/** 把班级选项同步到「日志筛选 / 备份 / 查询口令」三处的下拉框 */
+function syncClassSelects() {
+  const options = view.classOptions.map((x) => `<option value="${x.id}">${escapeHtml(x.name)}</option>`).join('');
+  const pairs = [
+    ['#logClass', '<option value="">全部班级</option>'],
+    ['#backupClass', '<option value="">选择一个班级</option>'],
+    ['#backupTargetClass', '<option value="">选择被覆盖的班级</option>'],
+    ['#qtClass', '<option value="">选择班级</option>'],
+  ];
+  pairs.forEach(([sel, head]) => {
+    const el = $(sel);
+    if (!el) return;
+    const current = el.value;
+    el.innerHTML = head + options;
+    el.value = current;
+  });
 }
 
 function openClassModal(cls) {
@@ -325,24 +344,302 @@ async function loadRecycle() {
   };
 }
 
-async function loadAudit() {
-  const data = await api.get('/super/audit', { page: 1, pageSize: 20 });
-  $('#auditBody').innerHTML = data.items.length
-    ? data.items
+/* ================= 全量操作日志 ================= */
+const logView = { page: 1, pageSize: 20, range: 1, classId: '', actorRole: '', module: '', result: '', keyword: '' };
+
+const MODULE_LABEL = {
+  class: '班级业务', members: '成员管理', super: '超管后台',
+  auth: '登录鉴权', backup: '备份恢复', query: '对外查询', system: '系统',
+};
+
+/** 后端返回下划线列名，转成前端习惯的驼峰，并拆出 before / after / diff */
+function mapLog(r) {
+  const raw = String(r.detail || '');
+  const beforeIdx = raw.indexOf('BEFORE:');
+  const afterIdx = raw.indexOf('AFTER:');
+  let detail = raw;
+  let before = null;
+  let after = null;
+  if (beforeIdx >= 0 || afterIdx >= 0) {
+    detail = raw.slice(0, beforeIdx >= 0 ? beforeIdx : afterIdx).trim();
+    const cut = (tag, nextTag) => {
+      const start = raw.indexOf(tag);
+      if (start < 0) return null;
+      const body = nextTag && raw.indexOf(nextTag) > start ? raw.slice(start + tag.length, raw.indexOf(nextTag)) : raw.slice(start + tag.length);
+      try {
+        return JSON.parse(body.trim());
+      } catch {
+        return null;
+      }
+    };
+    before = cut('BEFORE:', 'AFTER:');
+    after = cut('AFTER:');
+  }
+  return {
+    id: r.id,
+    createdAt: r.created_at,
+    actorId: r.actor_id,
+    actorName: r.actor_name || '系统',
+    actorRole: r.actor_role || '',
+    classId: r.class_id,
+    className: r.class_name || '',
+    module: r.module,
+    action: r.action,
+    targetType: r.target_type || '',
+    targetId: r.target_id || '',
+    targetName: r.target_name || '',
+    summary: r.summary || '',
+    amount: r.amount || '',
+    result: r.result || 'success',
+    statusCode: r.status_code || 0,
+    ip: r.ip || '',
+    userAgent: r.user_agent || '',
+    detailRaw: detail,
+    before,
+    after,
+  };
+}
+
+async function loadLogs() {
+  const q = { page: logView.page, pageSize: logView.pageSize };
+  if (logView.range > 0) q.from = Date.now() - logView.range * 86400000;
+  if (logView.classId) q.classId = logView.classId;
+  if (logView.actorRole) q.actorRole = logView.actorRole;
+  if (logView.module) q.module = logView.module;
+  if (logView.result) q.result = logView.result;
+  if (logView.keyword) q.keyword = logView.keyword;
+
+  const data = await api.get('/super/logs', q);
+  const items = data.items.map(mapLog);
+  $('#logTotal').textContent = data.total;
+  const table = $('#logTable');
+  table.innerHTML = `
+    <thead><tr>
+      <th style="width:96px">时间</th><th>操作者</th><th>班级</th><th>动作</th>
+      <th>摘要</th><th style="width:70px">结果</th>
+    </tr></thead>
+    <tbody>
+      ${items
         .map(
-          (r) => `<div class="sheet-item">
-            <span class="grow">${escapeHtml(r.actorName)} <span class="tiny muted">${escapeHtml(r.action)}</span>
-              <div class="tiny muted">${escapeHtml(r.detail || '')}</div></span>
-            <span class="tiny muted nowrap">${fmtDateTime(r.createdAt)}</span>
-          </div>`
+          (row) => `<tr data-id="${row.id}" class="log-row">
+            <td class="tiny muted nowrap">${fmtDateTime(row.createdAt)}</td>
+            <td>
+              <div class="cell-strong">${escapeHtml(row.actorName || '系统')}</div>
+              <div class="tiny muted">${escapeHtml(ROLE_LABEL[row.actorRole] || row.actorRole || '系统')}</div>
+            </td>
+            <td class="tiny">${escapeHtml(row.className || '—')}</td>
+            <td class="tiny nowrap">
+              <span class="badge badge-slate">${escapeHtml(MODULE_LABEL[row.module] || row.module)}</span>
+              <div class="tiny muted">${escapeHtml(row.action)}</div>
+            </td>
+            <td>
+              <div class="tiny">${escapeHtml(row.summary || '（无摘要）')}</div>
+              ${row.amount ? `<div class="tiny muted">数量：${escapeHtml(row.amount)}</div>` : ''}
+            </td>
+            <td>${row.result === 'success'
+              ? '<span class="badge badge-green">成功</span>'
+              : `<span class="badge badge-rose">${escapeHtml(String(row.statusCode || '失败'))}</span>`}</td>
+          </tr>`
         )
-        .join('')
-    : '<div class="empty">暂无操作记录</div>';
+        .join('')}
+      ${items.length ? '' : '<tr><td colspan="6"><div class="empty">这段时间没有匹配的操作记录</div></td></tr>'}
+    </tbody>`;
+  renderPager($('#logPager'), {
+    page: logView.page,
+    pageSize: logView.pageSize,
+    total: data.total,
+    onChange: (p) => {
+      logView.page = p;
+      loadLogs();
+    },
+  });
+  table.onclick = (e) => {
+    const tr = e.target.closest('tr.log-row');
+    if (!tr) return;
+    const row = items.find((x) => x.id === tr.dataset.id);
+    if (row) openLogDetail(row);
+  };
+}
+
+function kvBlock(obj) {
+  if (!obj || typeof obj !== 'object') return '<div class="empty">无</div>';
+  const rows = Object.entries(obj).map(
+    ([k, v]) => `<div class="sheet-item"><span class="tiny muted nowrap">${escapeHtml(k)}</span>
+      <span class="grow tiny" style="text-align:right;word-break:break-all">${escapeHtml(typeof v === 'object' ? JSON.stringify(v) : String(v ?? ''))}</span></div>`
+  );
+  return rows.join('') || '<div class="empty">无</div>';
+}
+
+function openLogDetail(row) {
+  const diff = [];
+  if (row.before && row.after) {
+    Object.keys(row.after).forEach((k) => {
+      const b = row.before[k];
+      const a = row.after[k];
+      if (JSON.stringify(b) !== JSON.stringify(a)) diff.push({ key: k, from: b, to: a });
+    });
+  }
+  openModal({
+    title: '操作详情',
+    wide: true,
+    body: `<div class="col">
+      <div class="tiny muted">${escapeHtml(fmtDateTime(row.createdAt))} · IP ${escapeHtml(row.ip || '—')}</div>
+      <div class="row wrap">
+        <span class="badge">${escapeHtml(row.actorName)}</span>
+        <span class="badge badge-slate">${escapeHtml(ROLE_LABEL[row.actorRole] || row.actorRole || '系统')}</span>
+        ${row.className ? `<span class="badge badge-green">${escapeHtml(row.className)}</span>` : ''}
+        <span class="badge ${row.result === 'success' ? 'badge-green' : 'badge-rose'}">${row.result === 'success' ? '成功' : `失败 ${escapeHtml(String(row.statusCode || ''))}`}</span>
+      </div>
+      <div class="field"><label>动作</label><div class="tiny">${escapeHtml(`${row.module}.${row.action}`)}${row.targetType ? ` → ${escapeHtml(row.targetType)}${row.targetName ? ` / ${escapeHtml(row.targetName)}` : ''}` : ''}</div></div>
+      <div class="field"><label>摘要</label><div class="tiny">${escapeHtml(row.summary || '（无）')}</div></div>
+      ${row.amount ? `<div class="field"><label>数量</label><div class="tiny">${escapeHtml(row.amount)}</div></div>` : ''}
+      ${diff.length
+        ? `<div class="field"><label>变更字段（前 → 后）</label>
+            ${diff.map((d) => `<div class="sheet-item"><span class="tiny muted nowrap">${escapeHtml(d.key)}</span>
+              <span class="grow tiny" style="text-align:right">
+                <s style="color:var(--c-ink-4)">${escapeHtml(typeof d.from === 'object' ? JSON.stringify(d.from) : String(d.from ?? ''))}</s>
+                → <b>${escapeHtml(typeof d.to === 'object' ? JSON.stringify(d.to) : String(d.to ?? ''))}</b></span></div>`).join('')}
+          </div>`
+        : ''}
+      ${row.before ? `<div class="field"><label>变更前快照</label>${kvBlock(row.before)}</div>` : ''}
+      ${row.after ? `<div class="field"><label>变更后快照</label>${kvBlock(row.after)}</div>` : ''}
+      ${row.detailRaw ? `<div class="field"><label>请求明细</label><div class="tiny" style="word-break:break-all;white-space:pre-wrap">${escapeHtml(row.detailRaw)}</div></div>` : ''}
+      ${row.userAgent ? `<div class="field"><label>客户端 UA</label><div class="tiny muted" style="word-break:break-all">${escapeHtml(row.userAgent)}</div></div>` : ''}
+    </div>`,
+    footer: '<button class="btn btn-ghost" data-close>关闭</button>',
+  });
+}
+
+function logExportQuery() {
+  const q = {};
+  if (logView.range > 0) q.from = Date.now() - logView.range * 86400000;
+  if (logView.classId) q.classId = logView.classId;
+  if (logView.actorRole) q.actorRole = logView.actorRole;
+  if (logView.module) q.module = logView.module;
+  if (logView.result) q.result = logView.result;
+  if (logView.keyword) q.keyword = logView.keyword;
+  return q;
+}
+
+function showTokenShare(token) {
+  const url = `${window.location.origin}/query.html?token=${encodeURIComponent(token)}`;
+  openModal({
+    title: '把这段发给家长',
+    body: `<div class="col">
+      <div class="field"><label>查询入口</label>
+        <div class="row">
+          <input class="input grow" id="shareUrl" value="${escapeHtml(url)}" readonly />
+          <button class="btn btn-sm btn-primary" id="shareCopy">复制</button>
+        </div>
+      </div>
+      <div class="field"><label>班级查询口令</label>
+        <div class="num" style="font-size:24px;font-weight:800;letter-spacing:.12em">${escapeHtml(token)}</div>
+      </div>
+      <div class="tiny muted">复制链接后发给家长即可，家长打开页面填写姓名与学号就能自助查成绩，不需要注册账号。</div>
+    </div>`,
+    footer: '<button class="btn btn-ghost" data-close>关闭</button><a class="btn btn-primary" id="shareOpen" target="_blank" rel="noopener">预览页面</a>',
+    onMount(m) {
+      const input = m.querySelector('#shareUrl');
+      m.querySelector('#shareOpen').href = url;
+      m.querySelector('#shareCopy').onclick = async () => {
+        input.select();
+        try {
+          await navigator.clipboard.writeText(input.value);
+          toast('已复制到剪贴板', 'ok');
+        } catch {
+          document.execCommand('copy');
+          toast('已复制', 'ok');
+        }
+      };
+    },
+  });
+}
+
+/* ================= 数据备份 ================= */
+async function runImportBackup() {
+  const mode = $('#backupMode').value;
+  const targetClassId = $('#backupTargetClass').value;
+  const className = $('#backupClassName').value.trim();
+  if (mode === 'replace' && !targetClassId) return toast('覆盖模式请先选择被覆盖的班级', 'err');
+  const form = new FormData();
+  form.append('mode', mode);
+  form.append('targetClassId', targetClassId);
+  form.append('className', className);
+  const file = $('#backupFile').files[0];
+  const text = $('#backupText').value.trim();
+  if (!file && !text) return toast('请上传备份文件或粘贴备份内容', 'err');
+  if (file) form.append('file', file);
+  else form.append('text', text);
+  if (mode === 'replace') {
+    const ok = await confirmDialog({
+      title: '覆盖导入',
+      message: '覆盖模式会用备份内容完全替换目标班级现有数据，确定继续？',
+      okText: '覆盖导入',
+      danger: true,
+    });
+    if (!ok) return;
+  }
+  try {
+    const res = await api.upload('/super/backup/import', form);
+    $('#backupResult').innerHTML = `<span style="color:var(--c-green)">导入成功</span>：班级「${escapeHtml(res.name || '')}」，
+      学生 ${res.counts ? res.counts.students : 0} 人 / 积分 ${res.counts ? res.counts.pointLogs : 0} 条 /
+      成绩 ${res.counts ? res.counts.scores : 0} 条 / 账号档案 ${res.counts ? res.counts.members : 0} 个`;
+    $('#backupFile').value = '';
+    $('#backupText').value = '';
+    toast('备份已导入', 'ok');
+    await Promise.all([loadClasses(), loadAccounts(), loadStats(), loadLogs()]);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+  return undefined;
+}
+
+/* ================= 成绩对外查询口令 ================= */
+const SCOPE_LABEL = { scores: '仅成绩', points: '仅积分', all: '成绩 + 积分' };
+const MODE_LABEL = { name_no: '姓名 + 学号', phone: '姓名 + 家长手机后 4 位', none: '仅姓名' };
+
+async function loadQueryTokens() {
+  const data = await api.get('/super/query-tokens');
+  const items = data.items || [];
+  $('#qtCount').textContent = items.length;
+  $('#qtTable').innerHTML = `
+    <thead><tr>
+      <th>班级</th><th>口令</th><th>查询范围</th><th>校验方式</th><th>状态</th>
+      <th class="nowrap">最近使用</th><th style="width:190px">操作</th>
+    </tr></thead>
+    <tbody>
+      ${items
+        .map(
+          (t) => `<tr data-id="${t.id}">
+            <td>
+              <div class="cell-strong">${escapeHtml(t.className)}</div>
+              <div class="tiny muted">${escapeHtml(t.name || '未命名')}</div>
+            </td>
+            <td class="num"><code style="letter-spacing:.06em">${escapeHtml(t.token)}</code></td>
+            <td class="tiny">${escapeHtml(SCOPE_LABEL[t.scope] || t.scope)}</td>
+            <td class="tiny">${escapeHtml(MODE_LABEL[t.mode] || t.mode)}</td>
+            <td>
+              ${t.enabled ? '<span class="badge badge-green">启用中</span>' : '<span class="badge badge-rose">已停用</span>'}
+              ${t.expiresAt ? `<div class="tiny muted nowrap">至 ${fmtDate(t.expiresAt)}</div>` : '<div class="tiny muted">长期有效</div>'}
+            </td>
+            <td class="tiny muted nowrap">${t.lastUsedAt ? fmtDateTime(t.lastUsedAt) : '未使用'}</td>
+            <td>
+              <div class="row" style="gap:6px">
+                <button class="btn btn-sm btn-ghost" data-qt="copy" data-token="${escapeHtml(t.token)}">复制入口</button>
+                <button class="btn btn-sm btn-ghost" data-qt="toggle">${t.enabled ? '停用' : '启用'}</button>
+                <button class="btn btn-sm btn-danger" data-qt="delete">删除</button>
+              </div>
+            </td>
+          </tr>`
+        )
+        .join('')}
+      ${items.length ? '' : '<tr><td colspan="7"><div class="empty">还没有查询口令，先在上方生成</div></td></tr>'}
+    </tbody>`;
 }
 
 /* ================= 绑定 ================= */
 export async function mountSuperApp({ logout }) {
-  await Promise.all([loadStats(), loadClasses(), loadAccounts(), loadRecycle(), loadAudit()]);
+  await Promise.all([loadStats(), loadClasses(), loadAccounts(), loadRecycle(), loadLogs()]);
 
   $('#btnSuperLogout').onclick = logout;
 
@@ -372,7 +669,7 @@ export async function mountSuperApp({ logout }) {
         $(sel).value = '';
       });
       toast('班级与班主任已创建', 'ok');
-      await Promise.all([loadStats(), loadClasses(), loadAccounts(), loadAudit()]);
+      await Promise.all([loadStats(), loadClasses(), loadAccounts(), loadLogs()]);
     } catch (err) {
       toast(err.message, 'err');
     }
@@ -386,6 +683,13 @@ export async function mountSuperApp({ logout }) {
     $$('#superTabs .pill').forEach((b) => b.classList.toggle('active', b === btn));
     $('#superClassesPanel').classList.toggle('hidden', view.tab !== 'classes');
     $('#superAccountsPanel').classList.toggle('hidden', view.tab !== 'accounts');
+    $('#superLogsPanel').classList.toggle('hidden', view.tab !== 'logs');
+    $('#superBackupPanel').classList.toggle('hidden', view.tab !== 'backup');
+    $('#superQueryPanel').classList.toggle('hidden', view.tab !== 'query');
+    $('#recycleCard').classList.toggle('hidden', view.tab !== 'classes');
+    if (view.tab === 'logs') loadLogs();
+    if (view.tab === 'query') loadQueryTokens();
+    if (view.tab === 'backup') syncClassSelects();
   });
 
   $('#clsSearch').addEventListener('input', (e) => {
@@ -415,7 +719,129 @@ export async function mountSuperApp({ logout }) {
     loadAccounts();
   };
   $('#btnExportClasses').onclick = () => api.download('/super/classes/export.csv', { search: view.classes.search });
-  $('#btnAuditRefresh').onclick = loadAudit;
+
+  /* ---------- 操作日志 ---------- */
+  $('#logRangeTabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-range]');
+    if (!btn) return;
+    $$('#logRangeTabs .pill').forEach((b) => b.classList.toggle('active', b === btn));
+    logView.range = Number(btn.dataset.range);
+    logView.page = 1;
+    loadLogs();
+  });
+  const bindLogFilter = (sel, key) => {
+    $(sel).addEventListener('change', (e) => {
+      logView[key] = e.target.value;
+      logView.page = 1;
+      loadLogs();
+    });
+  };
+  bindLogFilter('#logClass', 'classId');
+  bindLogFilter('#logRole', 'actorRole');
+  bindLogFilter('#logModule', 'module');
+  bindLogFilter('#logResult', 'result');
+  $('#logKeyword').addEventListener('input', (e) => {
+    clearTimeout(view._t3);
+    view._t3 = setTimeout(() => {
+      logView.keyword = e.target.value.trim();
+      logView.page = 1;
+      loadLogs();
+    }, 300);
+  });
+  $('#btnLogRefresh').onclick = loadLogs;
+  $('#btnLogExport').onclick = () => api.download('/super/logs/export.csv', logExportQuery());
+  $('#btnLogClear').onclick = async () => {
+    const days = await new Promise((resolve) => {
+      openModal({
+        title: '清理旧日志',
+        body: `<div class="field"><label>保留最近多少天的操作日志</label>
+            <input class="input num" id="clrDays" type="number" value="180" min="1" max="3650" /></div>
+            <div class="tiny muted" style="margin-top:8px">更早的记录会被永久删除，且无法恢复；建议先导出 CSV 留档。</div>`,
+        footer: '<button class="btn btn-ghost" data-cancel>取消</button><button class="btn btn-danger" id="clrOk">确认清理</button>',
+        onClose: () => resolve(null),
+        onMount(m) {
+          m.querySelector('[data-cancel]').onclick = () => {
+            closeModal();
+            resolve(null);
+          };
+          m.querySelector('#clrOk').onclick = () => {
+            const v = Number(m.querySelector('#clrDays').value);
+            closeModal();
+            resolve(v > 0 ? v : null);
+          };
+        },
+      });
+    });
+    if (!days) return;
+    try {
+      const res = await api.post('/super/logs/clear', { days });
+      toast(`已清理 ${res.removed} 条旧日志`, 'ok');
+      await loadLogs();
+    } catch (err) {
+      toast(err.message, 'err');
+    }
+  };
+
+  /* ---------- 数据备份 ---------- */
+  $('#btnBackupClass').onclick = () => {
+    const id = $('#backupClass').value;
+    if (!id) return toast('请先选择要备份的班级', 'err');
+    api.download(`/super/backup/class/${id}`);
+    return undefined;
+  };
+  $('#btnBackupPlatform').onclick = () => api.download('/super/backup/platform');
+  $('#btnBackupImport').onclick = runImportBackup;
+  $('#backupMode').addEventListener('change', (e) => {
+    $('#backupTargetClass').style.display = e.target.value === 'replace' ? '' : 'none';
+  });
+
+  /* ---------- 成绩对外查询口令 ---------- */
+  $('#btnQtRefresh').onclick = loadQueryTokens;
+  $('#btnQtCreate').onclick = async () => {
+    const classId = $('#qtClass').value;
+    if (!classId) return toast('请先选择班级', 'err');
+    try {
+      const res = await api.post('/super/query-tokens', {
+        classId,
+        name: $('#qtName').value.trim(),
+        scope: $('#qtScope').value,
+        mode: $('#qtMode').value,
+        days: Number($('#qtDays').value),
+      });
+      $('#qtName').value = '';
+      toast(`口令已生成：${res.token}`, 'ok');
+      await loadQueryTokens();
+      showTokenShare(res.token);
+    } catch (err) {
+      toast(err.message, 'err');
+    }
+    return undefined;
+  };
+  $('#qtTable').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-qt]');
+    if (!btn) return;
+    const id = btn.closest('tr[data-id]').dataset.id;
+    const act = btn.dataset.qt;
+    if (act === 'copy') return showTokenShare(btn.dataset.token);
+    try {
+      if (act === 'toggle') {
+        const enabled = btn.textContent.trim() === '启用';
+        await api.patch(`/super/query-tokens/${id}`, { enabled });
+        toast(enabled ? '口令已启用' : '口令已停用', 'ok');
+        await loadQueryTokens();
+      }
+      if (act === 'delete') {
+        const ok = await confirmDialog({ title: '删除口令', message: '删除后持有该口令的家长将无法再查询，确定继续？', okText: '删除', danger: true });
+        if (!ok) return undefined;
+        await api.del(`/super/query-tokens/${id}`);
+        toast('口令已删除', 'ok');
+        await loadQueryTokens();
+      }
+    } catch (err) {
+      toast(err.message, 'err');
+    }
+    return undefined;
+  });
 
   const handleDropdown = (tableSel, onAction) => {
     $(tableSel).addEventListener('click', async (e) => {
@@ -460,7 +886,7 @@ export async function mountSuperApp({ logout }) {
       try {
         await api.del(`/super/classes/${id}`);
         toast('班级已删除', 'ok');
-        await Promise.all([loadClasses(), loadAccounts(), loadStats(), loadRecycle(), loadAudit()]);
+        await Promise.all([loadClasses(), loadAccounts(), loadStats(), loadRecycle(), loadLogs()]);
       } catch (err) {
         toast(err.message, 'err');
       }
@@ -494,7 +920,7 @@ export async function mountSuperApp({ logout }) {
       try {
         await api.del(`/super/accounts/${id}`);
         toast('已删除', 'ok');
-        await Promise.all([loadAccounts(), loadStats(), loadAudit()]);
+        await Promise.all([loadAccounts(), loadStats(), loadLogs()]);
       } catch (err) {
         toast(err.message, 'err');
       }

@@ -92,6 +92,14 @@ function addStudent(classId, data) {
     position: data.position || '',
     points: 0,
     createdAt: Date.now(),
+    studentNo: data.studentNo || '',
+    birthday: data.birthday || '',
+    address: data.address || '',
+    guardianName: data.guardianName || '',
+    guardianPhone: data.guardianPhone || '',
+    guardianRelation: data.guardianRelation || '',
+    guardianAltPhone: data.guardianAltPhone || '',
+    note: data.note || '',
   });
 }
 
@@ -167,6 +175,23 @@ function importStudents(classId, buffer) {
       const sexRaw = String(pick(row, ['性别', 'sex'], '')).trim();
       const sex = /男/.test(sexRaw) ? '男' : /女/.test(sexRaw) ? '女' : '';
       const position = String(pick(row, ['职务', '班级职务', '职位', 'position'], '')).trim().slice(0, 20);
+      // 档案扩展字段：多种常见表头自动识别，家长联系方式是学校的刚需
+      const studentNo = String(pick(row, ['学号', '学籍号', '编号', 'studentNo', 'student_no'], '')).trim().slice(0, 24);
+      const birthday = String(pick(row, ['出生日期', '生日', '出生年月', 'birthday'], '')).trim().slice(0, 20);
+      const address = String(pick(row, ['家庭住址', '住址', '地址', 'address'], '')).trim().slice(0, 120);
+      const guardianName = String(
+        pick(row, ['家长姓名', '监护人姓名', '监护人', '家长', '联系人', 'guardianName'], '')
+      )
+        .trim()
+        .slice(0, 20);
+      const guardianPhone = String(
+        pick(row, ['家长电话', '家长联系方式', '家长手机', '监护人电话', '联系电话', '手机', 'guardianPhone'], '')
+      )
+        .trim()
+        .slice(0, 24);
+      const guardianRelation = String(pick(row, ['与学生关系', '关系', '家长关系', 'relation'], '')).trim().slice(0, 10);
+      const guardianAltPhone = String(pick(row, ['备用电话', '备用联系电话', '第二联系人电话'], '')).trim().slice(0, 24);
+      const note = String(pick(row, ['备注', '说明', 'note', 'remark'], '')).trim().slice(0, 200);
       const k = key(name, groupName);
       if (seen.has(k)) {
         duplicates.push({ name, groupName });
@@ -174,23 +199,98 @@ function importStudents(classId, buffer) {
       }
       if (existing.length + added.length >= MAX_STUDENTS) break;
       seen.add(k);
-      added.push(repo.insertStudent(classId, { id: genId('stu'), name, groupName, sex, position, points: 0, createdAt: now }));
+      added.push(
+        repo.insertStudent(classId, {
+          id: genId('stu'),
+          name,
+          groupName,
+          sex,
+          position,
+          points: 0,
+          createdAt: now,
+          studentNo,
+          birthday,
+          address,
+          guardianName,
+          guardianPhone,
+          guardianRelation,
+          guardianAltPhone,
+          note,
+        })
+      );
     }
   });
   return { total: rows.length, added: added.length, duplicates: duplicates.length, invalid: invalid.length, items: added };
 }
 
+/** 学生花名册模板：含完整档案字段，填好直接导入即可 */
 function studentTemplate() {
   return buildBuffer([
     {
       name: '花名册',
       rows: [
-        { 姓名: '张小明', 小组: '第一组', 性别: '男', 职务: '班长' },
-        { 姓名: '李小红', 小组: '第一组', 性别: '女', 职务: '学习委员' },
-        { 姓名: '王小刚', 小组: '第二组', 性别: '男', 职务: '' },
+        {
+          姓名: '张小明',
+          小组: '第一组',
+          性别: '男',
+          职务: '班长',
+          学号: '20250101',
+          出生日期: '2013-05-12',
+          家庭住址: '示例市示例区示例路 1 号',
+          家长姓名: '张伟',
+          家长电话: '13800000001',
+          与学生关系: '父亲',
+          备用电话: '',
+          备注: '',
+        },
+        {
+          姓名: '李小红',
+          小组: '第一组',
+          性别: '女',
+          职务: '学习委员',
+          学号: '20250102',
+          出生日期: '2013-08-20',
+          家庭住址: '示例市示例区示例路 2 号',
+          家长姓名: '李娜',
+          家长电话: '13800000002',
+          与学生关系: '母亲',
+          备用电话: '',
+          备注: '',
+        },
       ],
-      cols: [12, 12, 8, 12],
+      cols: [10, 10, 6, 10, 12, 12, 28, 10, 14, 10, 12, 16],
     },
+  ]);
+}
+
+/** 导出本班学生花名册（Excel）：包含全部档案字段，可直接编辑后再导入 */
+function studentsWorkbook(classId) {
+  ensureClass(classId);
+  const cls = repo.getProfile(classId);
+  const students = repo.listStudents(classId, { sort: 'points_desc' });
+  const rows = students.map((s) => ({
+    姓名: s.name,
+    小组: s.groupName || '',
+    性别: s.sex || '',
+    职务: s.position || '',
+    学号: s.studentNo || '',
+    出生日期: s.birthday || '',
+    家庭住址: s.address || '',
+    家长姓名: s.guardianName || '',
+    家长电话: s.guardianPhone || '',
+    与学生关系: s.guardianRelation || '',
+    备用电话: s.guardianAltPhone || '',
+    备注: s.note || '',
+    当前积分: s.points,
+  }));
+  return buildBuffer([
+    { name: '花名册', rows, cols: [10, 10, 6, 10, 12, 12, 28, 10, 14, 10, 12, 16, 10] },
+    {
+      name: '积分快照',
+      rows: students.map((s) => ({ 姓名: s.name, 学号: s.studentNo || '', 小组: s.groupName || '', 积分: s.points })),
+      cols: [12, 14, 12, 10],
+    },
+    { name: '班级信息', rows: [{ 班级名称: cls.className, 学校: cls.school || '', 年级: cls.grade || '', 学生人数: students.length }], cols: [16, 20, 12, 10] },
   ]);
 }
 
@@ -702,6 +802,7 @@ module.exports = {
   groups,
   importStudents,
   studentTemplate,
+  studentsWorkbook,
   applyPoints,
   logs,
   removeLog,

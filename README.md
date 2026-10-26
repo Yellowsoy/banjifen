@@ -2,7 +2,13 @@
 
 一个面向小学班主任的班级积分管理系统：**花名册导入 / 实时加减分 / 积分排行 / 积分排座 / 积分商城 / 成绩分析与学习建议**，配套 **超级管理员 · 班主任 · 老师 · 班干部** 四级角色权限。
 
-整套系统可完全私有部署：一个 Node.js 进程 + 一个 SQLite 文件，无需任何第三方云服务。
+v2.1 新增三大能力：
+
+- **学生档案**：学号、出生日期、家庭住址、家长姓名 / 手机号 / 关系 / 备用电话、备注，随花名册 Excel 自动识别导入，一键导出完整档案 Excel；
+- **数据备份与恢复**：班级级 / 平台级 JSON 全量备份一键导出、上传即恢复（备份不含密码，密码一律重置后下发）；
+- **全量操作日志 + 成绩对外查询**：谁在哪个班对谁做了什么、改了哪几个字段、失败了几次，全部可查可导出；家长凭「口令 + 学号」在公开页面免登录查成绩。
+
+整套系统可完全私有部署：一个 Node.js 进程 + 一个 SQLite 文件，无需任何第三方云服务；线上版本托管在 EdgeOne Pages（静态前端 + Node 云函数 + Blob 数据存储），域名 <https://bj.5166966.xyz>。
 
 <p>
 <img src="docs/screenshots/02-ranking.png" width="240" alt="学生榜" />
@@ -52,7 +58,7 @@
 - **学生榜**：排名（前三名金/银/铜）、小组、职务、积分；高→低 / 低→高 / 按时间（本期、本周、本月）；搜索、分页
 - **加减分**：单人加分/减分、快捷规则一键填入、原因备注；班干部受额度限制
 - **批量加减**：按学生 / 按小组、全选、统一原因
-- **学生管理**：新增、Excel/CSV 批量导入（表头容错、重复自动跳过）、模板下载、编辑、删除、单人历史
+- **学生管理**：新增（含完整档案）、Excel/CSV 批量导入（自动识别「学号/学籍号/编号、出生日期/生日、家庭住址/住址、家长姓名/监护人、家长电话/家长联系方式/家长手机、与学生关系/关系、备用电话、备注」等同义表头，重复自动跳过）、完整档案模板下载、**档案 Excel 导出**（花名册 + 积分快照 + 班级信息三个 Sheet）、编辑（含家长联系方式）、删除、单人历史
 - **快捷规则**：规则增删、Excel 导入、模板、恢复默认
 - **小组榜**：总积分 / 人均 / 人数，支持按时间
 - **积分排座**：可调布局、老师/学生视角、按积分/蛇形/随机、点座换人、整组对调、打印、导出
@@ -69,6 +75,42 @@
 - 角色调整：把某人设为班主任时自动把原班主任降为老师，保证"一班一主"
 - 回收站：已删除班级恢复、班级数据快照恢复
 - 操作日志：建班/建号/改密/转移/删除/恢复全部可追溯
+- **全量操作日志**：全部角色、全部模块（班级业务 / 成员 / 超管 / 登录 / 备份 / 对外查询）的每一步写操作，含操作者、角色、班级、目标、摘要、数量、成功或失败、状态码、IP、UA；编辑类操作记录**变更前后快照与字段级 diff**（点任意一行查看详情）；支持按时间 / 班级 / 角色 / 模块 / 结果 / 关键词筛选，导出 CSV，一键清理 N 天前旧日志
+- **数据备份**：班级备份（班级资料 + 成员 + 学生档案 + 积分 + 规则 + 礼物 + 兑换 + 考试成绩 + 座位表）、平台全量备份（全部班级 + 全部账号 + 回收站 + 最近 2 万条日志）；上传 JSON 一键恢复为新班级或覆盖现有班级，失败整体回滚；**备份不含任何密码散列**
+- **成绩对外查询**：为班级生成查询口令（可设有效期、可随时停用），家长打开 `/query.html` 输入口令 + 姓名学号即可免登录查看本人成绩、班均、最高分、班排与积分排名；一个口令只能查到命中的一名学生，家长手机号脱敏展示，失败尝试全部记入操作日志
+
+---
+
+## 重要操作方法（速查）
+
+### 学生档案与 Excel 导入导出（班主任）
+
+1. **逐个录入**：首页右侧「新增学生（含档案）」→ 填姓名、学号、出生日期、家长姓名 / 手机号 / 关系、备用电话、住址、备注 → 添加。
+2. **批量导入**：「批量导入」→ 选择 Excel/CSV → 导入。表头只要含「姓名」即可，其余列按同义表头自动识别（如「家长联系方式」会自动映射到家长手机号）。
+3. **模板**：点「模板」下载 12 列完整档案模板，按列填好后导入。
+4. **导出**：点「导出学生档案 Excel」，得到「花名册 + 积分快照 + 班级信息」三个 Sheet 的完整档案。
+5. **编辑**：学生榜 → 「编辑」→ 弹窗内可修改全部档案字段（含家长联系方式）。
+
+### 数据备份与恢复（超级管理员 → 数据备份页签）
+
+1. **导出班级备份**：选择班级 → 「导出班级备份」，得到 JSON 文件（含该班全部数据）。
+2. **导出平台全量备份**：一键下载所有班级 + 全部账号 + 回收站 + 操作日志。
+3. **恢复**：上传备份 JSON（或直接粘贴内容）→ 选「恢复为新班级」或「覆盖现有班级」→ 开始导入。覆盖模式会先二次确认，导入失败整体回滚，不会留下半份数据。
+4. ⚠️ **备份文件不包含登录密码**。恢复出的账号需要超管在「全部账号」里重置密码后才能登录。
+
+### 成绩对外查询（超级管理员 → 成绩查询页签）
+
+1. 选择班级、填写用途备注、选查询范围（仅成绩 / 仅积分 / 成绩+积分）与校验方式（姓名+学号 / 姓名+家长手机后 4 位 / 仅姓名）、有效期 → 「生成口令」。
+2. 弹窗里复制**查询入口链接**（`https://你的域名/query.html?token=口令`）发给家长。
+3. 家长打开链接，输入学生姓名 + 学号（或手机尾号）即可看到本人成绩、班排、班均、积分与排名，全程免登录。
+4. 口令可随时「停用 / 启用 / 删除」，停用后家长的链接立即失效；前提是学生档案里已填学号（或家长手机号）。
+5. 建议校验方式选「姓名 + 学号」，防同班同名误查；每次查询（含失败尝试）都会记入操作日志。
+
+### 全量操作日志（超级管理员 → 操作日志页签）
+
+- 按时间（今天 / 近 7 天 / 近 30 天 / 全部）+ 班级 + 角色 + 模块 + 成败 + 关键词任意组合筛选；
+- 点击任意一行查看详情：操作者、IP、UA、请求明细，编辑类操作还有**变更前后快照与字段级对比**（旧值划线 → 新值加粗）；
+- 「导出 CSV」导出当前筛选结果（最多 1 万条）；「清理旧日志」按天数删除并需确认，清理动作本身也会被记录。
 
 ---
 
@@ -160,15 +202,19 @@ node scripts/seed-demo.js
 │  │     ├─ members/           # 班主任管理本班成员
 │  │     ├─ super/             # 超管：班级、账号、归属、回收站、审计
 │  │     └─ public/            # 版本号、健康检查
-│  └─ test/smoke.test.js       # 53 项集成测试
+│  └─ test/smoke.test.js       # 69 项集成测试
 ├─ public/
-│  ├─ index.html
-│  ├─ css/app.css              # 设计系统（4pt 间距 + 统一列模板 + tabular-nums）
+│  ├─ index.html               # 班级工作台
+│  ├─ login.html               # 独立登录页
+│  ├─ settings.html            # 独立设置页
+│  ├─ query.html               # 家长免登录成绩查询页
+│  ├─ css/design-system.css    # 设计系统 v2（4pt 间距 + 统一列模板 + tabular-nums）
 │  └─ js/
 │     ├─ api.js ui.js store.js app.js
 │     ├─ class-app.js class-mall.js class-seat.js class-scores.js
 │     ├─ members.js            # 成员管理
-│     └─ super-app.js          # 超级管理员
+│     ├─ super-app.js          # 超级管理员（含日志/备份/查询页签）
+│     └─ query.js              # 公开查询页逻辑
 ├─ scripts/seed-demo.js        # 虚构演示数据（README 截图来源）
 ├─ docs/screenshots/           # 界面截图（虚构数据）
 ├─ data/                       # 运行后生成，已 gitignore
@@ -190,6 +236,10 @@ node scripts/seed-demo.js
 | 排座 / 成绩 | `GET\|PUT /class/seat`、`POST /class/seat/auto`、`GET /class/exams`、`POST /class/exams/import`、`DELETE /class/exams/:id`、`GET /class/scores`、`GET /class/scores/student/:id` |
 | 成员 | `GET\|POST /members`、`PATCH\|DELETE /members/:id`、`POST /members/transfer-owner`、`PATCH /members/settings/limits` |
 | 超管 | `GET /super/overview`、`GET\|POST /super/classes`、`PATCH\|DELETE /super/classes/:id`、`POST /super/classes/:id/restore\|transfer-owner`、`GET /super/classes/export.csv`、`GET\|POST /super/accounts`、`PATCH\|DELETE /super/accounts/:id`、`POST /super/accounts/:id/reset-password`、`GET /super/recycle`、`POST /super/recycle/:id/restore`、`GET /super/audit` |
+| 操作日志 | `GET /super/logs`（时间/班级/角色/模块/结果/关键词筛选）、`GET /super/logs/export.csv`、`POST /super/logs/clear` |
+| 备份 | `GET /super/backup/class/:id`、`GET /super/backup/platform`、`POST /super/backup/import`（multipart `file` 或 `text`，`mode=create\|replace`） |
+| 对外查询 | `GET\|POST /super/query-tokens`（生成 / 列表）、`PATCH\|DELETE /super/query-tokens/:id`（启停 / 删除）、`GET\|POST /public/query/:token`（免登录，限流 60 次/分） |
+| 学生档案 | `GET /class/students/export.xlsx`（档案三 Sheet 导出）；`POST\|PATCH /class/students` 支持 `studentNo/birthday/address/guardianName/guardianPhone/guardianRelation/guardianAltPhone/note` |
 | 公开 | `GET /public/settings`、`GET /health`、`GET /ready` |
 
 ---
@@ -201,13 +251,15 @@ node scripts/seed-demo.js
 | `classes` | 班级（= 数据空间）：名称、学校、年级、徽章、`owner_id`、班干部额度 |
 | `accounts` | 账号：`role` = super_admin / owner / teacher / cadre，`class_id` 归属，`phone`，软删除 |
 | `auth_sessions` | 刷新令牌（只存 SHA-256），支持轮换与吊销 |
-| `students` | 学生：姓名、小组、性别、职务、当前积分，软删除 |
+| `students` | 学生：姓名、小组、性别、职务、当前积分 + 档案（`student_no`、`birthday`、`address`、`guardian_name/phone/relation/alt_phone`、`note`），软删除 |
 | `point_logs` | 积分流水：分值、原因、类型、`operator_id / operator_name / operator_role` |
 | `quick_rules` / `gifts` / `redemptions` | 快捷规则、礼物、兑换记录 |
 | `exams` / `scores` | 考试与成绩（`exam_id + student_id` 唯一） |
 | `seat_plans` | 排座布局与座位 JSON |
 | `recycle` | 清空/删除前快照，超管可恢复 |
-| `admin_audit` | 超管操作审计 |
+| `admin_audit` | 超管操作审计（旧表，与 operation_logs 双写） |
+| `operation_logs` | **全量操作日志**：操作者（id/姓名/角色）、班级、模块、动作、目标、摘要、数量、成败、状态码、detail（含 BEFORE/AFTER 快照）、IP、UA |
+| `query_tokens` | **对外查询口令**：班级、口令（唯一）、范围、校验方式、启停、有效期、创建人、最近使用时间 |
 
 所有业务查询以 `class_id` 为边界（来自登录态，不接受前端传入）；越权访问统一 403/404。
 
@@ -258,10 +310,12 @@ npm test
 - 商城兑换（积分不足校验）、排座、成绩三视图与学习建议
 - 成员管理：建号、改密、停用、转移班主任、额度调整
 - 超管：建班、建号、改密、改手机号、改归属、"一班一主"、删除恢复、快照恢复、审计、导出
+- **学生档案**：档案写入/编辑、电话校验、档案 Excel 导出
+- **审计 / 备份 / 对外查询**：操作日志落库与筛选、CSV 导出、失败记录、日志清理；班级与平台备份导出（不含密码）、导入恢复、非法备份拒绝；查询口令生成、免登录查询与号码脱敏、学号不匹配拒绝、停用即失效
 - 安全：CSRF、422、越权 404、登出失效、刷新令牌
 
 ```
-结果：通过 53，失败 0
+结果：通过 69，失败 0
 ```
 
 ---
@@ -325,7 +379,8 @@ server {
 - **越权**：`requireAuth(role)` → `requireCap(capability)` → 服务层 `class_id` 归属校验；超管接口独立命名空间 `/api/super`
 - **隐私**：手机号仅超管见全量，班主任见脱敏值；日志脱敏敏感字段
 - **限流**：登录 5 分钟 30 次（内存窗口，多实例建议换 Redis）
-- **审计**：超管的建班/建号/改密/转移/删除/恢复全部落 `admin_audit`
+- **审计**：全站写操作统一经 `trail()` 中间件落 `operation_logs`（含失败请求），敏感字段（密码/令牌）自动脱敏，编辑操作留前后快照
+- **对外查询**：公开接口仅暴露命中学生的本人数据，家长手机号一律脱敏，口令可随时吊销，限流 60 次/分
 - **数据**：多步写入事务；SQLite 以临时文件 + rename 原子落盘，退出前 flush
 
 ---

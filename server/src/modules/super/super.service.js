@@ -8,7 +8,12 @@ const { ROLE, ROLE_LABEL } = require('../../core/policy');
 const { toCsv } = require('../../core/excel');
 const repo = require('./super.repository');
 const authRepo = require('../auth/auth.repository');
+const opAudit = require('../../core/audit');
 
+/**
+ * 超级管理员操作留痕：
+ * 同时写入 admin_audit（简版，兼容既有视图）与 operation_logs（详版，含 Before/After 与完整上下文）
+ */
 function audit(actor, action, targetType, targetId, detail = '') {
   repo.writeAudit({
     id: genId('aud'),
@@ -18,6 +23,16 @@ function audit(actor, action, targetType, targetId, detail = '') {
     targetType,
     targetId,
     detail,
+  });
+  opAudit.record({
+    actor: { id: actor.accountId, name: actor.name || '超级管理员', role: 'super_admin' },
+    module: 'super',
+    action,
+    targetType,
+    targetId,
+    targetName: '',
+    summary: String(detail || action),
+    detail: { detail },
   });
 }
 
@@ -256,6 +271,136 @@ function classesCsv(query) {
   return toCsv(['班级', '学校', '年级', '班主任', '班主任账号', '手机号', '成员数', '学生数', '积分记录'], rows);
 }
 
+/* ==================== 全量操作日志 ==================== */
+
+function listOperationLogs(query = {}) {
+  return opAudit.list(query);
+}
+
+function operationLogsCsv(query = {}) {
+  const { items } = opAudit.list({ ...query, page: 1, pageSize: 10000 });
+  return toCsv(
+    ['时间', '操作者', '角色', '班级', '模块', '动作', '目标类型', '目标', '摘要', '数量', '结果', '状态码', 'IP'],
+    items.map((r) => [
+      new Date(r.created_at).toLocaleString('zh-CN'),
+      r.actor_name,
+      ROLE_LABEL[r.actor_role] || r.actor_role || '系统',
+      r.class_name || '',
+      r.module,
+      r.action,
+      r.target_type,
+      r.target_name,
+      r.summary,
+      r.amount,
+      r.result === 'success' ? '成功' : '失败',
+      r.status_code || '',
+      r.ip || '',
+    ])
+  );
+}
+
+function clearOperationLogs(actor, days) {
+  const ts = Date.now() - Math.max(1, Number(days || 1)) * 86400000;
+  const changes = opAudit.clearBefore(ts);
+  audit(actor, 'logs.clear', 'system', '', `清理 ${Number(days)} 天前操作日志，共 ${changes} 条`);
+  return { removed: changes };
+}
+
+/* ==================== 数据备份与恢复 ==================== */
+
+const backup = require('../../core/backup');
+
+function exportClassBackup(actor, classId) {
+  const pack = backup.classBackup(classId);
+  audit(actor, 'backup.export', 'class', classId, `导出班级「${pack.class.name}」数据备份（${pack.stats.students} 名学生 / ${pack.stats.pointLogs} 条积分记录）`);
+  return pack;
+}
+
+function exportPlatformBackup(actor) {
+  const pack = backup.fullBackup();
+  audit(actor, 'backup.export', 'platform', '', `导出平台级全量备份（${pack.stats.classes} 个班级）`);
+  return pack;
+}
+
+function importBackup(actor, { text, mode = 'create', targetClassId = '', className = '', includeAccounts = false }) {
+  const pack = backup.parseBackup(text);
+  let result;
+  if (pack.scope === 'class') {
+    result = backup.importClassPack(pack, { mode, targetClassId, className });
+    audit(
+      actor,
+      'backup.import',
+      'class',
+      result.classId,
+      `导入班级备份「${result.name}」（${mode === 'replace' ? '覆盖原班级' : '新建班级'}）：` +
+        `${result.counts.students} 名学生 / ${result.counts.pointLogs} 条积分 / ${result.counts.scores} 条成绩 / ${result.counts.members} 个账号档案`
+    );
+  } else {
+    result = backup.importFullPack(pack, { includeAccounts });
+    audit(actor, 'backup.import', 'platform', '', `导入平台级备份，共恢复 ${result.imported} 个班级`);
+  }
+  return result;
+}
+
+/* ==================== 成绩对外查询口令 ==================== */
+
+function listQueryTokens() {
+  return db
+    .all(
+      `SELECT t.*, c.name AS class_name
+         FROM query_tokens t LEFT JOIN classes c ON c.id = t.class_id
+        ORDER BY t.created_at DESC`
+    )
+    .map((t) => ({
+      id: t.id,
+      classId: t.class_id,
+      className: t.class_name || '（班级已删除）',
+      token: t.token,
+      name: t.name,
+      scope: t.scope,
+      mode: t.mode,
+      enabled: !!t.enabled,
+      expiresAt: t.expires_at,
+      createdAt: t.created_at,
+      lastUsedAt: t.last_used_at,
+    }));
+}
+
+function createQueryToken(actor, { classId, name = '', scope = 'scores', mode = 'name_no', days = 0 }) {
+  const cls = db.get('SELECT id, name FROM classes WHERE id = ? AND deleted_at IS NULL', [classId]);
+  if (!cls) throw new NotFoundError('班级不存在');
+  let token = genId('q').slice(-10).toUpperCase();
+  for (let i = 0; i < 5; i += 1) {
+    if (!db.get('SELECT id FROM query_tokens WHERE token = ?', [token])) break;
+    token = genId('q').slice(-10).toUpperCase();
+  }
+  const id = genId('qtk');
+  const expiresAt = Number(days) > 0 ? Date.now() + Number(days) * 86400000 : null;
+  db.run(
+    `INSERT INTO query_tokens (id, class_id, token, name, scope, mode, enabled, expires_at, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+    [id, classId, token, name, scope, mode, expiresAt, actor.accountId, Date.now()]
+  );
+  audit(actor, 'query.token.create', 'class', classId, `为「${cls.name}」生成对外查询口令 ${token}（范围：${scope}，校验：${mode}）`);
+  return { id, token, classId, expiresAt };
+}
+
+function toggleQueryToken(actor, id, enabled) {
+  const row = db.get('SELECT * FROM query_tokens WHERE id = ?', [id]);
+  if (!row) throw new NotFoundError('口令不存在');
+  db.run('UPDATE query_tokens SET enabled = ? WHERE id = ?', [enabled ? 1 : 0, id]);
+  audit(actor, 'query.token.toggle', 'class', row.class_id, `${enabled ? '启用' : '停用'}查询口令 ${row.token}`);
+  return { ok: true, enabled: !!enabled };
+}
+
+function deleteQueryToken(actor, id) {
+  const row = db.get('SELECT * FROM query_tokens WHERE id = ?', [id]);
+  if (!row) throw new NotFoundError('口令不存在');
+  db.run('DELETE FROM query_tokens WHERE id = ?', [id]);
+  audit(actor, 'query.token.delete', 'class', row.class_id, `删除查询口令 ${row.token}`);
+  return { ok: true };
+}
+
 module.exports = {
   overview,
   listClasses,
@@ -274,4 +419,15 @@ module.exports = {
   listRecycle: repo.listRecycle,
   deletedClasses: repo.deletedClasses,
   listAccounts: repo.listAccounts,
+  // 新增：全量操作日志 / 备份恢复 / 对外查询口令
+  listOperationLogs,
+  operationLogsCsv,
+  clearOperationLogs,
+  exportClassBackup,
+  exportPlatformBackup,
+  importBackup,
+  listQueryTokens,
+  createQueryToken,
+  toggleQueryToken,
+  deleteQueryToken,
 };
