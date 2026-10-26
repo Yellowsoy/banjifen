@@ -12,7 +12,9 @@
     "start": "node server/src/index.js",
     "dev": "node --watch server/src/index.js",
     "seed": "node server/src/seed.js",
-    "test": "node server/test/smoke.test.js"
+    "test": "node server/test/smoke.test.js",
+    "build:edgeone": "node scripts/gen-inline.js && node scripts/build-edgeone.js",
+    "deploy:edgeone": "npm run build:edgeone && edgeone pages deploy deploy/edgeone-dist -n banjifen -t $EDGEONE_TOKEN"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -268,6 +268,24 @@ npm test
 
 ## 部署
 
+### 方式一：EdgeOne Pages（零成本，推荐）
+
+无需服务器、无需证书运维，静态前端 + Node 云函数 + Blob 数据存储全部由 EdgeOne 免费套餐承载：
+
+1. **GitHub 直连**（推荐）：在 EdgeOne Pages 控制台导入 `Yellowsoy/banjifen` 私有仓库，构建配置：
+   - 安装命令 `npm install`
+   - 构建命令 `node scripts/gen-inline.js && node scripts/build-edgeone.js`
+   - 输出目录 `deploy/edgeone-dist`，Node 22
+   - 之后每次 `git push` 自动构建上线。
+2. **CLI 直传**：`EDGEONE_TOKEN=<Pages API Token> npm run deploy:edgeone`
+3. **自定义域名**：控制台绑定域名后，在域名 DNS 处加 CNAME 到 EdgeOne 分配的目标（形如 `<域名>.pages.dnsoe6.com`），按提示加 `_dnsauth` 验证记录，免费证书自动签发（约几分钟到半小时）。
+
+架构说明：云函数把 `/api/*` 交给 `cloud-functions/api/[[default]].js`（打包后的 Express 应用），数据整库快照持久化在 Pages Blob（强一致读 + 每次写后落盘 + 多实例版本同步），wasm 与迁移 SQL 已内联进构建产物，无需本地文件系统。
+
+> 多实例说明：Blob 为「读己之写 + 快照版本同步」，同一班级低并发使用完全够用；极端并发下写入为最后写入胜出。
+
+### 方式二：自有服务器
+
 ```bash
 # 1. 常驻
 npm i -g pm2
