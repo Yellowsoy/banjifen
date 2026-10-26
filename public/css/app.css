@@ -69,6 +69,10 @@
   --cols-student: 44px minmax(0, 1fr) 84px 68px 64px;
   --cols-group: 44px minmax(0, 1fr) 56px 64px 56px;
   --cols-score: 44px minmax(0, 1fr) 76px 64px;
+
+  /* 内容最大宽度：手机端自适应，桌面端撑开到 1440 */
+  --maxw: 100%;
+  --header-maxw: 1440px;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -285,6 +289,14 @@ a { color: var(--brand); text-decoration: none; }
   color: #fff;
   background: linear-gradient(135deg, #4f46e5, #4338ca);
   box-shadow: 0 4px 16px rgba(67, 56, 202, .18);
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  max-width: var(--header-maxw);
+  margin: 0 auto;
 }
 .app-badge {
   flex: 0 0 auto;
@@ -780,6 +792,13 @@ a { color: var(--brand); text-decoration: none; }
 .chip.active { outline: 2px solid var(--brand); }
 
 /* ======================= 响应式 ======================= */
+/* 班级端主布局：手机端单列纵向，桌面端侧栏 + 主区两栏 */
+.class-layout { display: block; }
+.class-sidebar { display: contents; }
+.class-main { display: block; }
+.class-sidebar .collapse { margin: var(--s-3) var(--gutter) 0; }
+.class-main .panel { margin-top: 0; }
+
 @media (max-width: 640px) {
   .admin-shell { padding: var(--s-3) var(--s-3) var(--s-12); }
   .admin-title { font-size: var(--t-lg); flex: 1 1 100%; }
@@ -791,24 +810,124 @@ a { color: var(--brand); text-decoration: none; }
   .score-metric { padding: var(--s-2) 4px; }
   .score-metric b { font-size: var(--t-base); }
 }
+
+/* ===== 桌面端：真正铺满宽屏的响应式 ===== */
 @media (min-width: 900px) {
-  .shell { max-width: 780px; }
-  :root { --gutter: var(--s-6); --pad-card: var(--s-6); }
-  .table-head, .table-row { --cols-student: 52px minmax(0, 1fr) 110px 86px 76px; }
-  .table-head.group, .group-row { --cols-group: 52px minmax(0, 1fr) 72px 84px 68px; }
-  /* 桌面端：行内操作独占整行第二行，横向排列，避免挤进首列与排名徽章重叠 */
-  .table-row .ops {
-    grid-column: 1 / -1;
+  :root {
+    --gutter: var(--s-8);
+    --pad-card: var(--s-6);
+    --maxw: 1440px;
+  }
+
+  /* 内容容器全宽，限制最大宽度并居中 */
+  .shell { max-width: var(--maxw); padding-left: var(--gutter); padding-right: var(--gutter); }
+
+  /* 头部通栏铺满，内部限宽居中 */
+  .app-header { padding: 0 var(--gutter); }
+  .app-header .header-inner { padding: 0; }
+  .app-title { font-size: var(--t-lg); }
+  .app-meta { font-size: var(--t-sm); }
+  .role-chip { font-size: var(--t-xs); line-height: 18px; padding: 1px 10px; }
+
+  /* 统计卡：手机端 2 列，桌面端 2 列（数据项不足时不强行拉伸） */
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+
+  /* 两栏布局：左侧操作面板，右侧主内容 */
+  .class-layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: var(--s-6);
+    align-items: start;
+  }
+  .class-sidebar { display: block; }
+  .class-sidebar .collapse { margin: var(--s-3) 0 0; }
+  .class-sidebar .collapse-body { padding: 0 var(--s-4) var(--s-4); }
+
+  /* 页签横排居中，不再占满整行 4 格 */
+  .view-tabs {
     display: flex;
+    justify-content: flex-start;
+    gap: var(--s-2);
+    margin: var(--s-3) 0 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    position: static;
+  }
+  .view-tab {
     flex-direction: row;
+    gap: var(--s-2);
+    padding: var(--s-2) var(--s-4);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    font-size: var(--t-sm);
+  }
+  .view-tab i { height: auto; }
+
+  /* 主内容区面板间距放开 */
+  .class-main .panel { margin: var(--s-4) 0 0; }
+
+  /* 表格：加宽列、放大字号、行内展示操作 */
+  .table-head, .table-row { --cols-student: 56px minmax(0, 1fr) 130px 110px 90px; }
+  .table-head.group, .group-row { --cols-group: 56px minmax(0, 1fr) 90px 110px 90px; }
+  .table-head, .table-row { padding: var(--s-3) var(--s-4); font-size: var(--t-sm); }
+  .stu-name { font-size: var(--t-base); }
+  .stu-sub { font-size: var(--t-xs); }
+  .points-pill { min-width: 56px; font-size: var(--t-base); padding: 4px var(--s-3); }
+  .op-btn { height: 36px; padding: 0 var(--s-3); font-size: var(--t-xs); }
+  /* 桌面端：行内操作与积分列同排，减少行高 */
+  .table-row {
+    grid-template-areas: "rank name group position points ops";
+    grid-template-columns: var(--cols-student) auto;
+    column-gap: var(--s-3);
+  }
+  .table-row > div:nth-child(1) { grid-area: rank; }
+  .table-row > div:nth-child(2) { grid-area: name; }
+  .table-row > div:nth-child(3) { grid-area: group; }
+  .table-row > div:nth-child(4) { grid-area: position; }
+  .table-row > div:nth-child(5) { grid-area: points; }
+  .table-row .ops {
+    grid-area: ops;
+    display: flex;
+    flex-wrap: nowrap;
     justify-content: flex-end;
     gap: var(--s-2);
-    margin-top: var(--s-2);
-    padding-top: var(--s-2);
-    border-top: 1px dashed var(--line-2);
+    margin: 0;
+    padding: 0;
+    border-top: none;
   }
   .table-row .ops .op-btn { min-width: 72px; padding: 0 var(--s-3); }
-  .seat-toolbar { gap: var(--s-2); }
+  /* 表头补一列占位（与 ops 对齐） */
+  .table-head { grid-template-columns: var(--cols-student) auto; column-gap: var(--s-3); }
+  .table-head::after { content: '操作'; text-align: right; color: var(--ink-4); font-size: var(--t-xs); font-weight: 600; }
+
+  .seat-toolbar { gap: var(--s-3); }
+  .seat-grid { gap: var(--s-2); }
+  .seat { min-height: 56px; }
+
+  /* 商城多列 */
+  .gift-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--s-4); }
+
+  /* 成绩摘要 6 列，条形图更宽 */
+  .score-summary { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s-3); }
+  .score-metric { padding: var(--s-4) var(--s-3); }
+  .bar-row { grid-template-columns: 72px 1fr 40px; }
+
+  /* 管理端超管：统计 4 列、表格字号放大 */
+  .admin-shell { max-width: var(--maxw); padding: var(--s-6) var(--gutter) var(--s-12); }
+  .admin-topbar { margin-bottom: var(--s-6); }
+  .admin-title { font-size: var(--t-2xl); }
+  .admin-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-4); }
+  .admin-table th, .admin-table td { padding: var(--s-3) var(--s-4); font-size: var(--t-sm); }
+
+  .member-ops { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--s-2); }
+}
+
+@media (min-width: 1200px) {
+  /* 超宽屏：侧栏加宽，主内容更舒展 */
+  .class-layout { grid-template-columns: 340px minmax(0, 1fr); }
+  .admin-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 
 @media print {
