@@ -345,34 +345,6 @@ export async function mountSuperApp({ logout }) {
   await Promise.all([loadStats(), loadClasses(), loadAccounts(), loadRecycle(), loadAudit()]);
 
   $('#btnSuperLogout').onclick = logout;
-  $('#btnSuperPwd').onclick = () => {
-    openModal({
-      title: '修改密码',
-      body: `<div class="col">
-        <div class="field"><label>当前密码</label><input class="input" type="password" id="spOld" /></div>
-        <div class="field"><label>新密码</label><input class="input" type="password" id="spNew" placeholder="至少 6 位" /></div>
-        <div class="field"><label>确认新密码</label><input class="input" type="password" id="spNew2" /></div>
-      </div>`,
-      footer: '<button class="btn btn-ghost" data-close>取消</button><button class="btn btn-primary" id="spSave">保存</button>',
-      onMount(m) {
-        m.querySelector('#spSave').onclick = async () => {
-          const oldPassword = m.querySelector('#spOld').value;
-          const newPassword = m.querySelector('#spNew').value;
-          if (newPassword.length < 6) return toast('新密码至少 6 位', 'err');
-          if (newPassword !== m.querySelector('#spNew2').value) return toast('两次输入不一致', 'err');
-          try {
-            await api.post('/auth/password', { oldPassword, newPassword });
-            closeModal();
-            toast('密码已修改，请重新登录', 'ok');
-            setTimeout(() => window.location.reload(), 800);
-          } catch (err) {
-            toast(err.message, 'err');
-          }
-          return undefined;
-        };
-      },
-    });
-  };
 
   $('#btnToggleClassForm').onclick = () => {
     const body = $('#classFormBody');

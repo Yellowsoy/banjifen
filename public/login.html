@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#3B6FF5" />
+<meta name="description" content="班级积分管理：登录后可进行花名册导入、实时加减分、积分排行、积分排座、积分商城与成绩分析。" />
+<title>登录 · 班级积分管理</title>
+<link rel="stylesheet" href="./css/design-system.css" />
+</head>
+<body>
+
+<div class="login-page">
+  <!-- 左侧英雄区（仅电脑端展示） -->
+  <aside class="login-hero">
+    <span class="hero-chip">中小学班级 · 积分化管理</span>
+    <h1>让每一份表现都被看见</h1>
+    <p>花名册一键导入、实时加减分、积分排行与排座、积分商城兑换、成绩分析，班主任、老师与班干部共用同一套数据。</p>
+    <span class="hero-chip">班主任 · 老师 · 班干部 分级权限</span>
+  </aside>
+
+  <!-- 右侧表单区 -->
+  <main class="login-form-wrap">
+    <div class="login-card">
+      <div class="login-logo">积</div>
+      <div class="login-title">班级积分管理</div>
+      <div class="login-sub">登录后进入你的班级工作台</div>
+
+      <div class="col">
+        <div class="field">
+          <label>登录账号</label>
+          <input id="loginUser" class="input" placeholder="手机号或账号" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label>登录密码</label>
+          <input id="loginPwd" class="input" type="password" placeholder="请输入密码" autocomplete="current-password" />
+        </div>
+        <div id="loginErr" class="err-text hidden"></div>
+        <button id="btnLogin" class="btn btn-primary btn-block">登 录</button>
+      </div>
+
+      <div class="tips-box">
+        账号由超级管理员或班主任统一开通，不开放自助注册<br />
+        忘记密码请联系本班班主任或超级管理员重置
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script type="module">
+  const BASE = '/api';
+
+  function toast(message, type = 'err') {
+    const wrap = document.getElementById('toastWrap');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = message;
+    wrap.appendChild(el);
+    setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity .2s';
+      setTimeout(() => el.remove(), 220);
+    }, 2200);
+  }
+
+  function showError(text) {
+    const box = document.getElementById('loginErr');
+    box.textContent = text;
+    box.classList.remove('hidden');
+  }
+
+  function clearError() {
+    document.getElementById('loginErr').classList.add('hidden');
+  }
+
+  async function api(path, { method = 'GET', body } = {}) {
+    const options = {
+      method,
+      credentials: 'same-origin',
+      headers: { 'x-requested-with': 'fetch' },
+    };
+    if (body !== undefined) {
+      options.headers['content-type'] = 'application/json';
+      options.body = JSON.stringify(body);
+    }
+    const res = await fetch(`${BASE}${path}`, options);
+    if (!res.ok) {
+      let message = `请求失败（${res.status}）`;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          const data = await res.json();
+          if (data && data.error) message = data.error.message || message;
+        } catch { /* 忽略解析失败 */ }
+      }
+      throw new Error(message);
+    }
+    const ct = res.headers.get('content-type') || '';
+    return ct.includes('application/json') ? res.json() : res.text();
+  }
+
+  /** 已登录用户直接进入工作台，避免重复登录 */
+  async function skipIfAuthed() {
+    try {
+      await api('/auth/me');
+      window.location.replace('/');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function doLogin() {
+    const username = document.getElementById('loginUser').value.trim();
+    const password = document.getElementById('loginPwd').value;
+    clearError();
+    if (!username || !password) {
+      showError('请输入账号和密码');
+      return;
+    }
+    const btn = document.getElementById('btnLogin');
+    btn.disabled = true;
+    btn.textContent = '登录中…';
+    try {
+      await api('/auth/login', { method: 'POST', body: { username, password } });
+      window.location.replace('/');
+    } catch (err) {
+      showError(err.message);
+      btn.disabled = false;
+      btn.textContent = '登 录';
+      document.getElementById('loginPwd').select();
+    }
+  }
+
+  skipIfAuthed().then((redirected) => {
+    if (redirected) return;
+    document.getElementById('btnLogin').onclick = doLogin;
+    ['loginUser', 'loginPwd'].forEach((id) => {
+      document.getElementById(id).addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doLogin();
+      });
+    });
+    document.getElementById('loginUser').focus();
+  });
+</script>
+
+</body>
+</html>
