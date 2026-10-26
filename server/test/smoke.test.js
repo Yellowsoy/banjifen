@@ -589,6 +589,42 @@ async function main() {
     assert.ok(created.summary.includes('新增学生'), '摘要应说明动作');
   });
 
+  await ok('编辑类操作记录变更前后快照与字段级 diff', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const res = await superC.get('/api/super/logs?pageSize=50');
+    const updated = res.data.items.find((i) => i.action === 'student.update' && String(i.summary).includes('guardian_phone'));
+    assert.ok(updated, `应有一条含字段变更摘要的编辑记录，实际摘要：${res.data.items.map((i) => i.summary).join(' | ').slice(0, 200)}`);
+    const detail = String(updated.detail || '');
+    assert.ok(detail.includes('BEFORE:'), 'detail 应包含变更前快照');
+    assert.ok(detail.includes('AFTER:'), 'detail 应包含变更后快照');
+    const beforePart = detail.slice(detail.indexOf('BEFORE:') + 7, detail.indexOf('AFTER:'));
+    const afterPart = detail.slice(detail.indexOf('AFTER:') + 6);
+    assert.ok(beforePart.includes('"guardian_phone":"13900001111"'), '变更前快照应含旧家长电话');
+    assert.ok(afterPart.includes('"guardian_phone":"13900002222"'), '变更后快照应含新家长电话');
+    assert.ok(detail.includes('"position"'), '快照应含未变更字段，便于完整还原');
+  });
+
+  await ok('超管动作不再重复入日志（中间件与服务层各写一条）', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const before = (await superC.get('/api/super/logs?pageSize=1')).data.total;
+    const cls = await superC.post('/api/super/classes', {
+      name: '去重验证班',
+      school: '示例小学',
+      grade: '四年级',
+      ownerName: '去重班主任',
+      phone: '13800009999',
+      username: 'dedup001',
+      password: 'abc123456',
+    });
+    assert.equal(cls.status, 201, JSON.stringify(cls.data));
+    const after = (await superC.get('/api/super/logs?pageSize=1')).data.total;
+    assert.equal(after - before, 1, `建班应只产生 1 条日志，实际 ${after - before} 条`);
+    const legacy = await superC.get('/api/super/audit');
+    assert.ok(legacy.data.items.some((r) => r.action === 'class.create'), '旧审计表仍应保留记录');
+  });
+
   await ok('操作日志支持按模块/关键词筛选，并可导出 CSV', async () => {
     const superC = new Client();
     await login(superC, 'admin', 'admin123456', 'super');

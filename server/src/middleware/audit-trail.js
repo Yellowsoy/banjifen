@@ -51,6 +51,8 @@ function trail(options) {
         const ctx = { req, before, after, diff, body: trimBody(req.body) };
         const nameFromRow = (row) => (row && entity && entity.nameField ? row[entity.nameField] : '');
 
+        // before / after 走 record 的顶层参数：落库时会被写成 BEFORE:/AFTER: 前缀行，
+        // 超管前端据此还原「变更前 / 变更后」快照；detail 只保留请求上下文与 diff，避免重复占用。
         record({
           req,
           module: options.module,
@@ -62,14 +64,14 @@ function trail(options) {
           amount: String(resolve(options.amount, ctx) || ''),
           result: ok ? 'success' : 'failed',
           statusCode,
+          before,
+          after,
           detail: {
             method: req.method,
             path: req.originalUrl,
             params: req.params,
             query: req.query,
             body: ctx.body,
-            before,
-            after,
             diff,
           },
         });

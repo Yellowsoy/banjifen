@@ -14,6 +14,13 @@ const opAudit = require('../../core/audit');
  * 超级管理员操作留痕：
  * 同时写入 admin_audit（简版，兼容既有视图）与 operation_logs（详版，含 Before/After 与完整上下文）
  */
+/**
+ * 超管动作审计：只写旧表 admin_audit（供 /api/super/audit 兼容接口使用）。
+ *
+ * operation_logs 不再在这里写 —— super.routes.js 已给每个超管写接口挂了 trail() 中间件，
+ * 那条记录包含 HTTP 状态码、IP、UA 与 before/after 快照，信息更完整；
+ * 若此处再写一次，同一个动作会在日志里出现两条，反而误导。
+ */
 function audit(actor, action, targetType, targetId, detail = '') {
   repo.writeAudit({
     id: genId('aud'),
@@ -23,16 +30,6 @@ function audit(actor, action, targetType, targetId, detail = '') {
     targetType,
     targetId,
     detail,
-  });
-  opAudit.record({
-    actor: { id: actor.accountId, name: actor.name || '超级管理员', role: 'super_admin' },
-    module: 'super',
-    action,
-    targetType,
-    targetId,
-    targetName: '',
-    summary: String(detail || action),
-    detail: { detail },
   });
 }
 
