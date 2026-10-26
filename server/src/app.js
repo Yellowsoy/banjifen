@@ -6,10 +6,13 @@ const { config } = require('./config');
 const { requestContext } = require('./middleware/context');
 const { notFound, errorHandler } = require('./middleware/error');
 
-function createApp() {
+function createApp({ pre = [], spaFallback } = {}) {
   const app = express();
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
+
+  // EdgeOne 云函数等环境：先完成异步引导（数据库加载/多实例同步），再进入后续中间件
+  for (const mw of pre) app.use(mw);
 
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -77,6 +80,7 @@ function createApp() {
   // 前端为单页应用：非 /api 的 GET 请求回退到 index.html
   app.use((req, res, next) => {
     if (req.method !== 'GET' || req.path.startsWith('/api/')) return next();
+    if (spaFallback) return spaFallback(req, res);
     return res.sendFile(path.join(config.publicDir, 'index.html'));
   });
 

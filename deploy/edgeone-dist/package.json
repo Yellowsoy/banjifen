@@ -1,0 +1,16 @@
+{
+  "name": "banjifen-edgeone",
+  "private": true,
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.5.0",
+    "sql.js": "^1.15.1",
+    "xlsx": "^0.18.5",
+    "zod": "^4.6.7",
+    "@edgeone/pages-blob": "^0.0.18"
+  }
+}

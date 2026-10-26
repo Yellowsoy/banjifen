@@ -34,8 +34,14 @@ function resolvePath(p) {
 }
 
 const nodeEnv = required('NODE_ENV', 'development');
+// EO_PERSIST=blob 表示运行在 EdgeOne 云函数：数据持久化走 Blob 存储，不落本地盘
+const edgeMode = process.env.EO_PERSIST === 'blob';
 
-let jwtSecret = required('JWT_SECRET', nodeEnv === 'production' ? undefined : 'dev-only-insecure-secret-change-me-32chars');
+// 云函数模式下先用占位密钥启动，edge-entry 引导时从 Blob 读取/生成正式密钥并覆盖
+let jwtSecret = required(
+  'JWT_SECRET',
+  edgeMode ? 'edge-bootstrap-placeholder-secret-will-replace-32' : nodeEnv === 'production' ? undefined : 'dev-only-insecure-secret-change-me-32chars'
+);
 if (jwtSecret.length < 32) {
   throw new Error('[config] JWT_SECRET 长度必须 >= 32 个字符');
 }
@@ -62,8 +68,14 @@ const config = {
 };
 
 for (const dir of [path.dirname(config.dbFile), config.uploadDir]) {
-  fs.mkdirSync(dir, { recursive: true });
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch (err) {
+    if (!edgeMode) throw err; // 只读文件系统（云函数）下忽略
+  }
 }
+
+if (edgeMode) config.edge = true;
 
 /** 生成随机 ID（带前缀），与原系统 id 风格一致 */
 function genId(prefix) {
