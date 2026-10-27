@@ -17,7 +17,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/deploy-EdgeOne%20Pages-00b4ff?style=flat-square" alt="Deploy">
   <img src="https://img.shields.io/badge/cost-%240%2Fmonth-success?style=flat-square" alt="Cost">
-  <a href="https://bj.5166966.xyz"><img src="https://img.shields.io/badge/demo-bj.5166966.xyz-00b4ff?style=flat-square&logo=googlechrome&logoColor=white" alt="Demo"></a>
 </p>
 
 <p align="center">
@@ -36,7 +35,7 @@ v2.1 新增三大能力：
 - **数据备份与恢复**：班级级 / 平台级 JSON 全量备份一键导出、上传即恢复（备份不含密码，密码一律重置后下发）；
 - **全量操作日志 + 成绩对外查询**：谁在哪个班对谁做了什么、改了哪几个字段、失败了几次，全部可查可导出；家长凭「口令 + 学号」在公开页面免登录查成绩。
 
-整套系统可完全私有部署：一个 Node.js 进程 + 一个 SQLite 文件，无需任何第三方云服务；线上版本托管在 EdgeOne Pages（静态前端 + Node 云函数 + Blob 数据存储），域名 <https://bj.5166966.xyz>。
+整套系统可完全私有部署：一个 Node.js 进程 + 一个 SQLite 文件，无需任何第三方云服务；也可一键部署到 EdgeOne Pages（静态前端 + Node 云函数 + Blob 数据存储），详见[部署](#部署)。
 
 > 📄 开源协议：[Apache License 2.0](LICENSE) —— 允许商用与闭源二次分发，仅需保留版权声明。
 
@@ -185,17 +184,6 @@ v2.1 新增三大能力：
 ---
 
 ## 快速开始
-
-### 在线体验（无需安装）
-
-直接访问线上演示站点：<https://bj.5166966.xyz>
-
-| 角色 | 登录账号 | 密码 |
-| --- | --- | --- |
-| 超级管理员 | `admin` | `admin123456` |
-| 班主任（演示班） | `123456` | `123456` |
-
-> 以上为公开仓库中 `.env.example` 的**默认种子账号**，仅供体验；自建部署后请**立即改密**并停用演示账号（见[部署](#方式一edgeone-pages零成本推荐)）。
 
 ### 本地运行（自有服务器）
 
