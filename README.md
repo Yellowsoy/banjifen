@@ -250,7 +250,7 @@ v2.1 新增三大能力：
 │  ├─ css/design-system.css    # 设计系统 v2（4pt 间距 + 统一列模板 + 响应式）
 │  └─ js/                      # api · ui · store · app · class-* · members · super-app · query · settings
 ├─ cloud-functions/api/[[default]].js   # EdgeOne 云函数入口：/api/* → Express
-├─ .github/workflows/warmup.yml  # ★ 定时预热（每 30 分钟 ping /api/cron/warmup，规避 cron 最小间隔 1 天的限制）
+├─ .github/workflows/warmup.yml  # ★ 定时预热（每小时 ping /api/cron/warmup，规避 EdgeOne cron 最小间隔 1 天的限制）
 ├─ scripts/
 │  ├─ gen-inline.js            # 内联迁移 SQL、sql.js wasm 与 loader（云函数必需）
 │  ├─ build-edgeone.js         # 生成 deploy/edgeone-dist 部署产物
@@ -462,6 +462,9 @@ npm test
    - 之后每次 `git push` 自动构建上线。
 2. **CLI 直传**：`EDGEONE_TOKEN=<Pages API Token> npm run deploy:edgeone`
 3. **自定义域名**：控制台绑定域名后，在域名 DNS 处加 CNAME 到 EdgeOne 分配的目标（形如 `<域名>.pages.dnsoe6.com`），按提示加 `_dnsauth` 验证记录，免费证书自动签发（约几分钟到半小时）。
+4. **首次部署后立即改密**（重要）：种子账号的默认密码写在 `.env.example` 里（`admin/admin123456`、`123456/123456`），
+   本仓库为公开仓库、这些默认值人人可见。首次部署成功后**立刻**在「账号管理」中修改超级管理员密码，
+   并停用不需要的演示账号（线上环境亦可在 `SUPER_USERNAME` / `SUPER_PASSWORD` 环境变量中指定自定义初始密码）。
 
 架构说明：云函数把 `/api/*` 交给 `cloud-functions/api/[[default]].js`（打包后的 Express 应用），数据整库快照持久化在 Pages Blob（强一致读 + 每次写后落盘 + 多实例版本同步），wasm 与迁移 SQL 已内联进构建产物，无需本地文件系统。
 
@@ -473,7 +476,7 @@ npm test
 
 | 目标 | 实现方式 | 生效方式 |
 | --- | --- | --- |
-| 冷启动预热（防 500/502） | `.github/workflows/warmup.yml` 每 30 分钟 ping 一次 `/api/cron/warmup` | 推送到 `main` 后 GitHub 自动调度 |
+| 冷启动预热（防 500/502） | `.github/workflows/warmup.yml` 每小时 ping 一次 `/api/cron/warmup` | 推送到 `main` 后 GitHub 自动调度 |
 | 单次执行时限 | 默认 30s 足够（引导耗时 < 1s），无需调高 | — |
 | 前端首屏提速 | `/public/settings` 与 `/auth/me` 并行请求；各业务模块按需 `import()` | 随代码发布 |
 | 云函数包体积 | `sql.js`（30MB）改为内联 loader（46KB）+ 内联 wasm（0.87MB base64） | 随代码发布 |
@@ -529,13 +532,13 @@ server {
 | --- | --- | --- |
 | 安全加速流量 | 不限 | 极低 |
 | 安全加速请求数 | 不限 | 极低 |
-| Cloud Functions 请求数 | 1,000,000 / 月 | 单校日常 < 1 万 / 月（含预热 1,440 次） |
+| Cloud Functions 请求数 | 1,000,000 / 月 | 单校日常 < 1 万 / 月（含预热 720 次） |
 | Cloud Functions GBs | 500,000 / 月 | 远低于额度 |
 | Edge Functions 请求数 | 3,000,000 / 月 | 本项目未使用 Edge Functions |
 | Edge Functions CPU 时间 | 3,000,000 / 月 | 同上 |
 | KV / Blob 存储 | 1 GB | 整库快照 < 1 MB |
 | 构建次数 | 500 / 月 | 仅每次 `git push` 触发 1 次 |
-| GitHub Actions（私有仓库） | 2,000 分钟 / 月 | 预热约 1,440 分钟 / 月 |
+| GitHub Actions | **公开仓库：完全免费、不限量**（标准 runner） | 预热约 720 次 / 月（约 720 分钟）；Public 下不计入任何限额 |
 
 > 官方定价 FAQ 明确：免费版**长期提供**；在推出收费版之前，即使超出免费额度也不会中断服务（仍会监控异常流量与滥用行为）。因此正常业务使用不存在"突然被收费"的风险。
 
@@ -544,12 +547,12 @@ server {
 **免费。** 预热本质只是周期性调用你自己的函数接口，消耗的是上面免费额度里的「Cloud Functions 请求数」，
 **不需要购买任何额外资源包，也没有单独计费项或单独限额**。
 
-本项目用 `.github/workflows/warmup.yml`（GitHub Actions 定时任务）实现，每 30 分钟 `GET /api/cron/warmup` 一次：
+本项目用 `.github/workflows/warmup.yml`（GitHub Actions 定时任务）实现，每小时 `GET /api/cron/warmup` 一次：
 
 ```yaml
 on:
   schedule:
-    - cron: '7,37 * * * *'   # 每 30 分钟
+    - cron: '7 * * * *'      # 每小时第 7 分
   workflow_dispatch:          # 可手动触发
 ```
 
@@ -558,15 +561,63 @@ on:
   `edgeone.json` 存在于仓库根目录会**覆盖控制台的项目配置**，实测导致 `/api/*` 的函数路由被接管、
   全部回退成静态首页。因此本项目刻意**不放**这个文件，改用与平台配置完全隔离的 GitHub Actions。
 - **成本核算（两处都远在免费额度内）**：
-  - EdgeOne：30 分钟一次 = 1,440 次 / 月，占 1,000,000 免费请求的 **0.14%**；
-  - GitHub Actions：每次运行约 10~20 秒，按分钟向上取整计 ≈ 1 分钟，1,440 次 / 月 = **1,440 分钟**，
-    在私有仓库 Free 计划的 2,000 分钟 / 月内（余量约 28%）。若把仓库改为 Public，Actions 对公开仓库**完全免费**，成本归零。
-- **可调节**：想更密集保活，把 cron 改成 `*/15 * * * *`（约 2,880 分钟，会逼近 Actions 额度上限，需同步确认）；
-  想省额度改回每 60 分钟一次即可。调频只需改 workflow 的 `cron` 一行。
+  - **EdgeOne**：每小时一次 = 720 次 / 月，占 1,000,000 免费请求的 **0.072%**；叠加真实业务（单校 < 1 万次 / 月）
+    合计仍 **< 1.1%**，可忽略。
+  - **GitHub Actions**：本仓库为 **Public**，标准 runner 对公开仓库**完全免费、不限量**，不存在分钟数额度。
+    即便将来转回 Private：每次运行约 10~20 秒，按「分钟」向上取整计 ≈ 1 分钟，
+    720 次 / 月 = **720 分钟**，在 Free 计划的 2,000 分钟 / 月内仅占 **36%**，余量充足。
+- **为什么是每小时而不是更频繁**：
+  1. 平台实例回收窗口远小于 1 小时，实测冷启动预热后 **978ms**、热实例 **712ms**，
+     60 分钟一次的保活频率对用户体验**无任何差别**；
+  2. 留足额度余量，仓库即便因故回到 Private 状态，预热也不会因超限被静默停掉（见下方「超额行为」）。
 - **无副作用**：该端点只返回 `{ ok: true, warmed: true, time }`，不写业务数据、不产生操作日志噪音、不占用 Blob 存储。
 
 > 客观说明：预热只能降低冷启动**发生频率**，无法阻止平台回收闲置实例。但配合下面「冷启动耗时本身已被压到 < 1s」，
 > "冷启动期间超时被判定失败"这一具体故障模式已基本消除。
+
+### 超额会发生什么（两套机制完全不同）
+
+| | EdgeOne Pages 免费版 | GitHub Actions |
+| --- | --- | --- |
+| 额度性质 | **软限制**：超量仍服务，仅监控异常流量与滥用 | **硬墙**：私有仓库配额耗尽后作业**根本不启动** |
+| 超额表现 | 站点功能完整，不中断；滥用可能被限流 | run 状态为 `blocked`（非 `error`），提示 *"your spending limit needs to be increased"* |
+| 无付款方式 | 照常服务，**不产生任何费用** | 停止运行，**不产生任何费用**，等下个计费周期重置 |
+| 有付款方式 | 仍服务（当前阶段不收费） | ⚠️ **自动按费率扣费**（Linux runner 约 $0.008 / 分钟） |
+| 公开仓库 | 同上 | ✅ **完全免费、不限量**，此风险不存在 |
+
+官方口径（EdgeOne 定价 FAQ）：
+
+> 在推出收费版之前，即使超出免费版的用量限制也不会中断服务。我们会监控异常流量和滥用行为，
+> 正常业务使用不受影响，收费版推出后将提供更高配额选择。
+
+官方口径（GitHub Actions 计费文档）：
+
+> 如果你的帐户未添加有效的付款方式，则配额用尽后将无法继续使用服务。
+
+> ⚠️ **最需要防范的组合**：账户已绑定付款方式 + 未设置 spending limit → 超限会**静默扣费**。
+> 若仓库内还有其它 workflow（CI/CD、测试），叠加后金额不可控。
+
+### 零成本保障（三道防线，缺一不可）
+
+本项目采用「**架构层消除 + 频率层留余量 + 账单层硬保险**」三层策略，确保**永久 $0**：
+
+| 层 | 措施 | 作用 |
+| --- | --- | --- |
+| 架构层 | 仓库设为 **Public** | Actions 对公开仓库标准 runner 完全免费、不限量，2,000 分钟瓶颈直接消失 |
+| 频率层 | cron 降为 **每小时一次**（720 分钟 / 月） | 即使转回 Private 也仅占 36%，不会触顶 |
+| 账单层 | **Budget = $0 + 开启 "Stop usage when budget limit is reached"** | 即使误绑付款方式，账单金额也永远为 $0，只会停跑 |
+
+**账单层需手动配置一次**（GitHub 未开放对应 API），路径：
+
+```
+仓库 → Settings → Billing and licensing → Usage limits → Budgets and alerts
+  1. New budget → Budget name 填 "banjifen-zero-cost"
+  2. Budget amount 填 0
+  3. 勾选 "Stop usage when budget limit is reached"   ← 关键项，缺它则只是告警不拦截
+  4. Notification thresholds 保持 75% / 90% / 100%
+```
+
+配置后，无论仓库可见性如何变化、workflow 如何增加，**都不可能产生任何费用**。
 
 ### 冷启动与加载速度：做了什么优化
 
@@ -617,7 +668,7 @@ on:
 - ⚠️ **EdgeOne 多实例一致性**：Blob 为「读己之写 + 每 2 秒版本同步」，同一班级低并发使用完全够用；**极端并发下写入为最后写入胜出（last-write-wins）**，多班级高并发场景建议在自有服务器（fs 模式，单进程独占）下运行。
 - ⚠️ **JWT 密钥**：本地/自有服务器用 `JWT_SECRET` 环境变量（≥32 字符，**生产环境务必更换**）；EdgeOne 模式下若无环境变量，首次随机生成并存入 Blob `bj/config/jwt-secret`，保证多实例与冷启动之间签名一致。若彻底清空 Blob，会重新生成密钥，导致旧登录态全部失效（用户需重新登录）。
 - ⚠️ **冷启动 500/502 与预热**：实例被平台回收后的首个请求需要初始化 wasm（0.87MB base64）并拉取 Blob 整库快照。
-  已用 GitHub Actions 每 30 分钟预热 `/api/cron/warmup` 兜底，**完全免费**；同时已把引导耗时压到 1 秒以内
+  已用 GitHub Actions 每小时预热 `/api/cron/warmup` 兜底，**完全免费**（仓库为 Public，Actions 不限量）；同时已把引导耗时压到 1 秒以内
   （wasm 与 loader 内联、Blob 读取并行、去掉 30MB 的 `sql.js` 依赖）。
   若线上仍偶发超时，先确认 Actions 的 `warmup` workflow 是否在正常运行（仓库 → Actions → warmup）。
 
