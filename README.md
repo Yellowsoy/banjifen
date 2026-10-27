@@ -186,46 +186,89 @@ v2.1 新增三大能力：
 
 ## 界面预览
 
-> 以下截图均使用 `scripts/seed-demo.js` 生成的**虚构数据**（示例学校、化名学生、测试号段手机号），不含任何真实业务信息。
+> 以下截图均使用 `scripts/seed-demo.js` 生成的**虚构数据**（示例学校、化名学生、测试号段手机号），不含任何真实业务信息。同一套响应式 UI，桌面端（1440px）与移动端（390px）分别截图。
 
-### 登录页
-![登录页](docs/screenshots/01-login.png)
+### 电脑端
 
-### 积分排行榜
-![积分排行榜](docs/screenshots/02-ranking.png)
+**登录页**
 
-### 加减分操作
-![加减分操作](docs/screenshots/03-points.png)
+![登录页 · 电脑端](docs/screenshots/desktop/01-login.png)
 
-### 小组管理
-![小组管理](docs/screenshots/04-groups.png)
+**积分排行榜**
 
-### 积分排座
-![积分排座](docs/screenshots/05-seating.png)
+![积分排行榜 · 电脑端](docs/screenshots/desktop/02-ranking.png)
 
-### 积分商城
-![积分商城](docs/screenshots/06-mall.png)
+**加减分操作**
 
-### 成绩分析
-![成绩分析](docs/screenshots/07-scores.png)
+![加减分操作 · 电脑端](docs/screenshots/desktop/03-points.png)
 
-### 学生档案
-![学生档案](docs/screenshots/08-student-report.png)
+**小组管理**
 
-### 成员管理
-![成员管理](docs/screenshots/09-members.png)
+![小组管理 · 电脑端](docs/screenshots/desktop/04-groups.png)
 
-### 操作日志
-![操作日志](docs/screenshots/10-logs.png)
+**积分排座**
 
-### 班干部视图
-![班干部视图](docs/screenshots/11-cadre-view.png)
+![积分排座 · 电脑端](docs/screenshots/desktop/05-seat.png)
 
-### 超管 · 班级管理
-![超管-班级管理](docs/screenshots/12-super-classes.png)
+**积分商城**
 
-### 超管 · 账号管理
-![超管-账号管理](docs/screenshots/13-super-accounts.png)
+![积分商城 · 电脑端](docs/screenshots/desktop/06-mall.png)
+
+**成绩分析**
+
+![成绩分析 · 电脑端](docs/screenshots/desktop/07-scores.png)
+
+**学生档案**
+
+![学生档案 · 电脑端](docs/screenshots/desktop/08-student-report.png)
+
+**成员管理**
+
+![成员管理 · 电脑端](docs/screenshots/desktop/09-members.png)
+
+**班干部视图**
+
+![班干部视图 · 电脑端](docs/screenshots/desktop/10-cadre-view.png)
+
+**超管 · 班级管理**
+
+![超管-班级管理 · 电脑端](docs/screenshots/desktop/11-super-classes.png)
+
+**超管 · 账号管理**
+
+![超管-账号管理 · 电脑端](docs/screenshots/desktop/12-super-accounts.png)
+
+**超管 · 操作日志**
+
+![超管-操作日志 · 电脑端](docs/screenshots/desktop/13-super-logs.png)
+
+### 手机端
+
+**登录页 ｜ 积分排行榜 ｜ 加减分操作**
+
+| 登录页 | 积分排行榜 | 加减分操作 |
+| --- | --- | --- |
+| ![登录页 · 手机端](docs/screenshots/mobile/01-login.png) | ![积分排行榜 · 手机端](docs/screenshots/mobile/02-ranking.png) | ![加减分操作 · 手机端](docs/screenshots/mobile/03-points.png) |
+
+**小组管理 ｜ 积分排座 ｜ 积分商城**
+
+| 小组管理 | 积分排座 | 积分商城 |
+| --- | --- | --- |
+| ![小组管理 · 手机端](docs/screenshots/mobile/04-groups.png) | ![积分排座 · 手机端](docs/screenshots/mobile/05-seat.png) | ![积分商城 · 手机端](docs/screenshots/mobile/06-mall.png) |
+
+**成绩分析 ｜ 学生档案 ｜ 成员管理**
+
+| 成绩分析 | 学生档案 | 成员管理 |
+| --- | --- | --- |
+| ![成绩分析 · 手机端](docs/screenshots/mobile/07-scores.png) | ![学生档案 · 手机端](docs/screenshots/mobile/08-student-report.png) | ![成员管理 · 手机端](docs/screenshots/mobile/09-members.png) |
+
+**班干部视图 ｜ 超管班级 ｜ 超管账号 ｜ 操作日志**
+
+| 班干部视图 | 超管 · 班级管理 | 超管 · 账号管理 |
+| --- | --- | --- |
+| ![班干部视图 · 手机端](docs/screenshots/mobile/10-cadre-view.png) | ![超管-班级管理 · 手机端](docs/screenshots/mobile/11-super-classes.png) | ![超管-账号管理 · 手机端](docs/screenshots/mobile/12-super-accounts.png) |
+
+![超管-操作日志 · 手机端](docs/screenshots/mobile/13-super-logs.png)
 
 ---
 
@@ -364,7 +407,7 @@ npm test   # 拉起独立实例，覆盖 74 项集成测试
 │  ├─ build-edgeone.js         # 生成 deploy/edgeone-dist 部署产物
 │  └─ seed-demo.js             # 虚构演示数据（README 截图来源）
 ├─ deploy/                     # 安装脚本、DNS 配置
-├─ docs/screenshots/           # 界面截图（虚构数据）
+├─ docs/screenshots/           # 界面截图（虚构数据）：desktop/ 电脑端 13 张 + mobile/ 手机端 13 张
 ├─ data/                       # 运行后生成（SQLite + uploads），已 gitignore
 ├─ .env.example                # 环境变量样例
 ├─ LICENSE                     # ★ Apache License 2.0 全文
