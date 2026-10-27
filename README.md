@@ -188,6 +188,19 @@ v2.1 新增三大能力：
 
 > 以下截图均使用 `scripts/seed-demo.js` 生成的**虚构数据**（示例学校、化名学生、测试号段手机号），不含任何真实业务信息。同一套响应式 UI，桌面端（1440px）与移动端（390px）分别截图；由 `scripts/shoot.py`（Playwright）自动生成，可复现。
 
+### 总览图（高清）
+
+**双端合并总览（8K，宽 7680px）** — 桌面 13 视图 + 手机 13 视图，共 26 张一图看全：
+
+![双端总览 8K](docs/screenshots/overview/overview-dual-8k.png)
+
+**桌面端总览（4K）** ｜ **手机端总览（4K）**
+
+![桌面端总览 4K](docs/screenshots/overview/overview-desktop-4k.png)
+![手机端总览 4K](docs/screenshots/overview/overview-mobile-4k.png)
+
+> 三张总览原图（超清，可直接下载查看细节）位于 [`docs/screenshots/overview/`](docs/screenshots/overview/)：`overview-dual-8k.png`、`overview-desktop-4k.png`、`overview-mobile-4k.png`。
+
 ### 电脑端
 
 **登录页**
