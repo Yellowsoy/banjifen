@@ -75,6 +75,22 @@ function createApp({ pre = [], spaFallback } = {}) {
     }
   });
 
+  // 云函数环境：平台会对 /api/* 剥前缀再回调本函数，故这里同时注册带 /api 前缀的路由
+  app.get('/api/ready', (req, res) => {
+    try {
+      require('./db').get('SELECT 1 AS ok');
+      res.json({ ready: true });
+    } catch {
+      res.status(503).json({ ready: false });
+    }
+  });
+
+  // 预热端点：被 edgeone.json 的 schedules 定时触发，经由 edge-entry 的 gate 完成数据库引导，
+  // 使云函数实例保持 warm，规避冷启动首请求超时（500/502）。免费额度内（每分钟级调用远小于 1M/月）。
+  app.get('/api/cron/warmup', (req, res) => {
+    res.json({ ok: true, warmed: true, time: Date.now() });
+  });
+
   app.use(notFound);
 
   // 前端为单页应用：非 /api 的 GET 请求回退到 index.html

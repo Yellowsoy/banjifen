@@ -1,0 +1,16 @@
+{
+  "$schema": "https://pages.edgeone.ai/schema/edgeone.json",
+  "cloudFunctions": {
+    "nodejs": {
+      "maxDuration": 60
+    }
+  },
+  "schedules": [
+    {
+      "name": "warmup",
+      "cron": "*/5 * * * *",
+      "path": "/api/cron/warmup",
+      "method": "GET"
+    }
+  ]
+}

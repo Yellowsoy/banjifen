@@ -2,8 +2,9 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <meta name="theme-color" content="#3B6FF5" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
 <meta name="description" content="班级积分管理：花名册导入、实时加减分、积分排行、积分排座、积分商城、成绩分析与权限分级。" />
 <title>班级积分管理</title>
 <link rel="stylesheet" href="./css/design-system.css" />
@@ -140,6 +141,7 @@
         <button class="pill" data-sort="points_asc">低→高</button>
         <button class="pill" data-sort="time">按时间</button>
       </div>
+      <button id="btnBatch" class="btn btn-warn btn-block desk-inline">批量加减分</button>
     </div>
     <div class="row hidden" style="margin-bottom:12px" id="rangeBar">
       <div class="pill-group" id="rangeTabs">
@@ -148,7 +150,6 @@
         <button class="pill" data-range="month">本月</button>
       </div>
     </div>
-    <button id="btnBatch" class="btn btn-warn btn-block" style="margin-bottom:12px">批量加减分</button>
     <div class="table-card">
       <div class="table-head">
         <div class="center">排名</div><div>姓名</div><div>小组</div><div>职务</div><div>积分</div>

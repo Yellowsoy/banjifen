@@ -930,18 +930,27 @@ tr.log-row { cursor: pointer; }
 /* ======================= 弹层 / 提示 ======================= */
 .modal-mask {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
   z-index: var(--z-backdrop);
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  padding: var(--s-4);
+  padding-bottom: max(var(--s-4), env(safe-area-inset-bottom, 0px));
   background: rgba(26, 34, 51, .5);
   backdrop-filter: blur(3px);
+  overflow-y: auto;
 }
 .modal {
   width: 100%;
   max-width: 520px;
   max-height: 88vh;
+  max-height: calc(100dvh - var(--s-10));
+  margin: auto;
   overflow-y: auto;
   padding: var(--s-5) var(--s-5) var(--s-6);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
@@ -978,7 +987,7 @@ tr.log-row { cursor: pointer; }
   padding-top: var(--s-4);
   border-top: 1px solid var(--c-line-2);
   position: sticky;
-  bottom: calc(var(--s-6) * -1);
+  bottom: 0;
   background: var(--c-surface);
 }
 .modal-actions .btn { flex: 1; }
@@ -1153,14 +1162,14 @@ tr.log-row { cursor: pointer; }
   .class-sidebar .collapse + .collapse { margin-top: var(--s-3); }
 
   .table-head, .table-row {
-    --cols-student: 56px minmax(0, 1fr) 130px 110px 90px auto;
+    --cols-student: 44px minmax(0, 1fr) 100px 92px 76px auto;
     column-gap: var(--s-3);
   }
-  .table-head.group, .group-row { --cols-group: 56px minmax(0, 1fr) 90px 110px 90px; }
+  .table-head.group, .group-row { --cols-group: 44px minmax(0, 1fr) 84px 100px 84px; }
   .table-head, .table-row { padding: var(--s-4) var(--s-5); }
   .stu-name { font-size: var(--t-md); }
   .points-pill { min-width: 56px; font-size: var(--t-md); padding: 5px 14px; }
-  .op-btn { height: 34px; padding: 0 var(--s-3); }
+  .op-btn { height: 32px; padding: 0 12px; }
   .table-row .ops {
     grid-column: auto;
     display: flex;
@@ -1170,7 +1179,7 @@ tr.log-row { cursor: pointer; }
     padding: 0;
     border-top: none;
   }
-  .table-row .ops .op-btn { min-width: 72px; padding: 0 var(--s-3); }
+  .table-row .ops .op-btn { min-width: 0; padding: 0 12px; }
 
   .seat-toolbar { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s-2); }
   .seat-grid { gap: var(--s-2); min-width: 0; }
@@ -1195,6 +1204,12 @@ tr.log-row { cursor: pointer; }
 @media (min-width: 1200px) {
   .class-layout { grid-template-columns: minmax(0, 1fr) 340px; }
   .admin-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  /* 宽屏恢复宽松列宽与按钮尺寸 */
+  .table-head, .table-row { --cols-student: 52px minmax(0, 1fr) 120px 104px 88px auto; }
+  .table-head.group, .group-row { --cols-group: 52px minmax(0, 1fr) 90px 110px 90px; }
+  .table-row .ops .op-btn { min-width: 64px; }
+  /* 桌面端通栏按钮收窄为常规尺寸（如「批量加减分」） */
+  .btn-block.desk-inline { width: auto; display: inline-flex; }
 }
 
 @media print {

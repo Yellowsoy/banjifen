@@ -20,13 +20,16 @@ v2.1 新增三大能力：
 - [核心特性](#核心特性)
 - [重要操作方法（速查）](#重要操作方法速查)
 - [技术栈](#技术栈)
+- [目录结构](#目录结构)
 - [后端服务与数据库说明](#后端服务与数据库说明)
+- [API](#api)
 - [存储位置与访问方式](#存储位置与访问方式)
 - [数据结构说明](#数据结构说明)
 - [界面规范（视觉对齐）](#界面规范视觉对齐)
 - [成绩「学习建议」是怎么算的](#成绩学习建议是怎么算的)
 - [测试](#测试)
 - [部署](#部署)
+- [免费架构与成本（永久 $0）](#免费架构与成本永久-0)
 - [注意事项与常见问题](#注意事项与常见问题)
 - [安全设计](#安全设计)
 - [说明](#说明)
@@ -68,12 +71,12 @@ v2.1 新增三大能力：
 
 每个业务模块内部遵循严格的四层职责分离，避免「在路由里写 SQL、在控制器里写业务」：
 
-| 层 | 文件 | 职责 |
-| --- | --- | --- |
-| **routes** | `*.routes.js` | 只声明路径、HTTP 方法、挂载 `requireAuth/requireCap` 能力校验、挂 `trail()` 审计；不做业务 |
-| **controller** | `*.controller.js` | 解析请求体/参数、调用 service、组织响应；做入参结构校验（zod） |
-| **service** | `*.service.js` | 业务逻辑、事务边界、归属校验（`class_id` 来自登录态，不接受前端传入）、调用 repository |
-| **repository** | `*.repository.js` | 纯 SQL 读写，全部使用参数化查询 |
+| 层              | 文件                | 职责                                                                 |
+| -------------- | ----------------- | ------------------------------------------------------------------ |
+| **routes**     | `*.routes.js`     | 只声明路径、HTTP 方法、挂载 `requireAuth/requireCap` 能力校验、挂 `trail()` 审计；不做业务 |
+| **controller** | `*.controller.js` | 解析请求体/参数、调用 service、组织响应；做入参结构校验（zod）                              |
+| **service**    | `*.service.js`    | 业务逻辑、事务边界、归属校验（`class_id` 来自登录态，不接受前端传入）、调用 repository             |
+| **repository** | `*.repository.js` | 纯 SQL 读写，全部使用参数化查询                                                 |
 
 > `members` 模块未单独拆 repository（业务较薄，service 直接调 db）；`public` 模块只含 routes，无业务逻辑。
 
@@ -102,18 +105,18 @@ v2.1 新增三大能力：
 
 ### 四级角色，边界清晰
 
-| 能力 | 超级管理员 | 班主任 | 老师 | 班干部 |
-| --- | :-: | :-: | :-: | :-: |
-| 定位 | 平台运维：管人、管号、管归属 | 班级第一责任人 | 任课老师 | 学生干部 |
-| 学生 | — | 增 / 改 / 删 | 增 / 改 | 只读 |
-| 加减分 | — | 单人 + 批量 | 单人 + 批量 | 单人（单次 ≤5、每日 ≤20，可调） |
-| 积分记录 | — | 查看 / 删除 / 清空 | 查看 / 导出 | 查看 |
-| 排座 | — | 全权 | 全权 | 只读 |
-| 积分商城 | — | 礼物增删 + 兑换 | 仅兑换 | 只读 |
-| 成绩 | — | 导入 + 删除考试 | 导入 | — |
-| 班级资料 / 清空数据 | — | ✓ | ✗ | ✗ |
-| 成员账号 | 任意班级任意角色 | 本班老师 / 班干部 | ✗ | ✗ |
-| 手机号 | 全量可见可改 | 仅脱敏 | 仅自己 | 仅自己 |
+| 能力          |      超级管理员     |      班主任     |    老师   |         班干部         |
+| ----------- | :------------: | :----------: | :-----: | :-----------------: |
+| 定位          | 平台运维：管人、管号、管归属 |    班级第一责任人   |   任课老师  |         学生干部        |
+| 学生          |        —       |   增 / 改 / 删  |  增 / 改  |          只读         |
+| 加减分         |        —       |    单人 + 批量   | 单人 + 批量 | 单人（单次 ≤5、每日 ≤20，可调） |
+| 积分记录        |        —       | 查看 / 删除 / 清空 | 查看 / 导出 |          查看         |
+| 排座          |        —       |      全权      |    全权   |          只读         |
+| 积分商城        |        —       |   礼物增删 + 兑换  |   仅兑换   |          只读         |
+| 成绩          |        —       |   导入 + 删除考试  |    导入   |          —          |
+| 班级资料 / 清空数据 |        —       |       ✓      |    ✗    |          ✗          |
+| 成员账号        |    任意班级任意角色    |  本班老师 / 班干部  |    ✗    |          ✗          |
+| 手机号         |     全量可见可改     |      仅脱敏     |   仅自己   |         仅自己         |
 
 设计要点：
 
@@ -168,12 +171,12 @@ v2.1 新增三大能力：
 
 ### 成绩对外查询（超级管理员 → 成绩查询页签）
 
-0. **总开关**：页签顶部「成绩自助查询 · 总开关」，默认**开启**。关闭后：登录页不再显示查询入口、家长公开查询页也无法访问（接口返回「功能已关闭」）；教师端与班级工作台完全不受影响，已生成的口令原样保留，重新开启即恢复。
-1. 选择班级、填写用途备注、选查询范围（仅成绩 / 仅积分 / 成绩+积分）与校验方式（姓名+学号 / 姓名+家长手机后 4 位 / 仅姓名）、有效期 → 「生成口令」。
-2. 弹窗里复制**查询入口链接**（`https://你的域名/query.html?token=口令`）发给家长。
-3. 家长打开链接，输入学生姓名 + 学号（或手机尾号）即可看到本人成绩、班排、班均、积分与排名，全程免登录。
-4. 口令可随时「停用 / 启用 / 删除」，停用后家长的链接立即失效；前提是学生档案里已填学号（或家长手机号）。
-5. 建议校验方式选「姓名 + 学号」，防同班同名误查；每次查询（含失败尝试）都会记入操作日志。
+1. **总开关**：页签顶部「成绩自助查询 · 总开关」，默认**开启**。关闭后：登录页不再显示查询入口、家长公开查询页也无法访问（接口返回「功能已关闭」）；教师端与班级工作台完全不受影响，已生成的口令原样保留，重新开启即恢复。
+2. 选择班级、填写用途备注、选查询范围（仅成绩 / 仅积分 / 成绩+积分）与校验方式（姓名+学号 / 姓名+家长手机后 4 位 / 仅姓名）、有效期 → 「生成口令」。
+3. 弹窗里复制**查询入口链接**（`https://你的域名/query.html?token=口令`）发给家长。
+4. 家长打开链接，输入学生姓名 + 学号（或手机尾号）即可看到本人成绩、班排、班均、积分与排名，全程免登录。
+5. 口令可随时「停用 / 启用 / 删除」，停用后家长的链接立即失效；前提是学生档案里已填学号（或家长手机号）。
+6. 建议校验方式选「姓名 + 学号」，防同班同名误查；每次查询（含失败尝试）都会记入操作日志。
 
 ### 全量操作日志（超级管理员 → 操作日志页签）
 
@@ -185,17 +188,78 @@ v2.1 新增三大能力：
 
 ## 技术栈
 
-| 层 | 选型 | 说明 |
-| --- | --- | --- |
-| 运行时 | Node.js 18.17+ | 无构建步骤（前端），后端单进程即可跑 |
-| Web 框架 | Express 5 | 分层：routes → controller → service → repository |
-| 数据库 | SQLite（[sql.js](https://sql.js.org/) WASM） | 纯 JS WebAssembly 实现，无需编译原生模块，Windows/macOS/Linux 一致；整库载入内存、写后原子落盘 |
-| 持久化驱动 | 本地文件 / EdgeOne Pages Blob | `EO_PERSIST=blob` 时切换为云端对象存储快照 |
-| 鉴权 | JWT + 服务端刷新令牌 | httpOnly Cookie，刷新即轮换，前端拿不到令牌 |
-| 校验 | Zod | 所有入参在边界处收敛 |
-| 前端 | 原生 ES Module + 手写 CSS | 无框架、无打包器，`public/` 直接托管 |
-| 导出 | SheetJS（xlsx） | 花名册/成绩导入，CSV 导出带 BOM |
-| 云函数 | EdgeOne Pages Functions | `/api/*` 路由到 `cloud-functions/api/[[default]].js` |
+| 层      | 选型                                         | 说明                                                                |
+| ------ | ------------------------------------------ | ----------------------------------------------------------------- |
+| 运行时    | Node.js 18.17+                             | 无构建步骤（前端），后端单进程即可跑                                                |
+| Web 框架 | Express 5                                  | 分层：routes → controller → service → repository                     |
+| 数据库    | SQLite（[sql.js](https://sql.js.org/) WASM） | 纯 JS WebAssembly 实现，无需编译原生模块，Windows/macOS/Linux 一致；整库载入内存、写后原子落盘 |
+| 持久化驱动  | 本地文件 / EdgeOne Pages Blob                  | `EO_PERSIST=blob` 时切换为云端对象存储快照                                    |
+| 鉴权     | JWT + 服务端刷新令牌                              | httpOnly Cookie，刷新即轮换，前端拿不到令牌                                     |
+| 校验     | Zod                                        | 所有入参在边界处收敛                                                        |
+| 前端     | 原生 ES Module + 手写 CSS                      | 无框架、无打包器，`public/` 直接托管                                           |
+| 导出     | SheetJS（xlsx）                              | 花名册/成绩导入，CSV 导出带 BOM                                              |
+| 云函数    | EdgeOne Pages Functions                    | `/api/*` 路由到 `cloud-functions/api/[[default]].js`                 |
+
+---
+
+## 目录结构
+
+```
+.
+├─ server/
+│  ├─ src/
+│  │  ├─ index.js              # 启动：初始化 DB → 种子 → 监听 → 优雅停机
+│  │  ├─ app.js                # 安全头、请求上下文、路由、错误处理、健康/预热端点
+│  │  ├─ config.js             # 环境变量集中校验（缺失/非法即启动失败）
+│  │  ├─ seed.js               # 种子：超管 + 演示班级 + 三种角色账号
+│  │  ├─ edge-env.js           # 云函数环境标记（强制 EO_PERSIST=blob）
+│  │  ├─ edge-entry.js         # 云函数入口：gate 引导 + 多实例同步 + 异步持久化
+│  │  ├─ core/
+│  │  │  ├─ policy.js          # ★ 权限单一来源：角色 × 能力矩阵
+│  │  │  ├─ errors.js          # 类型化错误体系
+│  │  │  ├─ logger.js          # 结构化 JSON 日志（敏感字段脱敏）
+│  │  │  ├─ security.js        # bcrypt / JWT / Cookie / 随机令牌
+│  │  │  ├─ validation.js      # zod schema 集合
+│  │  │  ├─ excel.js           # xlsx 读写、CSV(BOM)、表头容错
+│  │  │  ├─ audit.js           # 审计写入（operation_logs，含 before/after 快照）
+│  │  │  ├─ backup.js          # 班级/平台备份导出与导入恢复
+│  │  │  ├─ query.js           # 成绩对外查询（口令校验、手机号脱敏、总开关门禁）
+│  │  │  └─ settings.js        # 平台设置键值读写（如 public_query_enabled）
+│  │  ├─ db/
+│  │  │  ├─ index.js           # sql.js 连接、事务、原子落盘、迁移、Blob 快照
+│  │  │  ├─ migrations/001_init.sql      # 核心表（班级/账号/学生/积分/成绩…）
+│  │  │  ├─ migrations/002_features.sql  # 学生档案 / 全量日志 / 查询口令
+│  │  │  ├─ migrations/003_settings.sql  # 平台设置键值表
+│  │  │  ├─ migrations.generated.js      # ← gen-inline.js 生成（内联迁移）
+│  │  │  └─ sql-wasm.b64.js              # ← gen-inline.js 生成（内联 wasm）
+│  │  ├─ middleware/           # context · auth · error · rateLimit · audit-trail
+│  │  └─ modules/
+│  │     ├─ auth/              # 双入口登录、刷新、登出、改密
+│  │     ├─ class/             # 学生、积分、规则、商城、排座、成绩
+│  │     ├─ members/           # 班主任管理本班成员
+│  │     ├─ super/             # 超管：班级、账号、归属、回收站、日志、备份、查询
+│  │     └─ public/            # 公开配置、健康检查、免登录成绩查询
+│  └─ test/smoke.test.js       # 74 项集成测试
+├─ public/
+│  ├─ index.html               # 班级工作台 + 超级管理员（同页双屏，按角色切换）
+│  ├─ login.html               # 独立登录页
+│  ├─ settings.html            # 独立设置页
+│  ├─ query.html               # 家长免登录成绩查询页
+│  ├─ favicon.svg              # ★ 站点图标（四页共用，避免浏览器默认图标缺失）
+│  ├─ css/design-system.css    # 设计系统 v2（4pt 间距 + 统一列模板 + 响应式）
+│  └─ js/                      # api · ui · store · app · class-* · members · super-app · query · settings
+├─ cloud-functions/api/[[default]].js   # EdgeOne 云函数入口：/api/* → Express
+├─ edgeone.json                # ★ 平台配置：maxDuration + 定时预热 schedules
+├─ scripts/
+│  ├─ gen-inline.js            # 内联迁移 SQL 与 sql.js wasm（云函数必需）
+│  ├─ build-edgeone.js         # 生成 deploy/edgeone-dist 部署产物
+│  └─ seed-demo.js             # 虚构演示数据（README 截图来源）
+├─ deploy/                     # 安装脚本、DNS 配置
+├─ docs/screenshots/           # 界面截图（虚构数据）
+├─ data/                       # 运行后生成（SQLite + uploads），已 gitignore
+├─ .env.example                # 环境变量样例
+└─ package.json
+```
 
 ---
 
@@ -232,18 +296,44 @@ server/src/index.js → main()
 
 ---
 
+## API
+
+统一前缀 `/api`；写操作需带 `x-requested-with: fetch`（CSRF 防护）；错误统一返回 `{ error: { code, message }, requestId }`。
+
+| 分组 | 端点 |
+| --- | --- |
+| 认证 `/api/auth` | `POST /login`（`entry: class\|super`）、`POST /refresh`、`POST /logout`、`GET /me`、`POST /password` |
+| 班级资料 `/api/class` | `GET /overview`、`PUT /profile`、`GET /groups` |
+| 学生与档案 | `GET\|POST /students`、`PATCH\|DELETE /students/:id`、`GET /students/template`、`GET /students/export.xlsx`、`POST /students/import`、`DELETE /students/:id/logs` |
+| 积分 | `POST /points`、`GET\|DELETE /logs`、`DELETE /logs/:id`、`GET /logs/export.csv`、`GET /ranking/export.csv`、`POST /reset-points`、`POST /clear-all` |
+| 快捷规则 | `GET\|POST /rules`、`DELETE /rules/:id`、`POST /rules/reset`、`POST /rules/import`、`GET /rules/template` |
+| 积分商城 | `GET\|POST /gifts`、`PATCH\|DELETE /gifts/:id`、`POST /gifts/:id/redeem`、`GET /redemptions`、`GET /redemptions/export.csv` |
+| 排座 | `GET\|PUT /seat`、`POST /seat/auto` |
+| 成绩 | `GET /exams`、`POST /exams/import`、`DELETE /exams/:id`、`GET /exams/template`、`GET /scores`、`GET /scores/student/:id` |
+| 成员 `/api/members` | `GET\|POST /`、`PATCH\|DELETE /:id`、`POST /transfer-owner`、`PATCH /settings/limits` |
+| 超管 `/api/super` | `GET /overview`、`GET\|POST /classes`、`PATCH\|DELETE /classes/:id`、`POST /classes/:id/restore`、`POST /classes/:id/transfer-owner`、`GET /classes/export.csv`、`GET /classes/deleted/list`、`GET\|POST /accounts`、`PATCH\|DELETE /accounts/:id`、`POST /accounts/:id/reset-password`、`GET /recycle`、`POST /recycle/:id/restore`、`GET /audit` |
+| 全量操作日志 | `GET /super/logs`（时间/班级/角色/模块/结果/关键词筛选）、`GET /super/logs/export.csv`、`POST /super/logs/clear` |
+| 数据备份 | `GET /super/backup/class/:id`、`GET /super/backup/platform`、`POST /super/backup/import`（multipart `file` 或 `text`，`mode=create\|replace`） |
+| 对外查询口令 | `GET\|POST /super/query-tokens`、`PATCH\|DELETE /super/query-tokens/:id`（启停 / 删除） |
+| 平台设置 | `GET\|POST /super/settings/public-query`（成绩自助查询总开关，默认开启） |
+| 公开接口 | `GET /public/settings`、`GET /public/health`、`GET\|POST /public/query/:token`（免登录，限流 60 次/分） |
+| 运维与健康 | `GET /health`（存活）、`GET /ready`、`GET /api/ready`（就绪）、`GET /api/cron/warmup`（**预热端点**，由定时触发器周期调用） |
+
+---
+
 ## 存储位置与访问方式
 
 ### 本地 / 自有服务器（fs 模式）
 
-| 内容 | 路径 / 位置 | 访问方式 |
-| --- | --- | --- |
-| 主数据库（SQLite 文件） | `data/banjifen.sqlite`（相对仓库根，受 `DB_FILE` 控制） | 由后端 sql.js 载入内存，写后原子落盘；可用 `sqlite3 data/banjifen.sqlite` 直接打开查看 |
-| 临时落盘文件 | `data/banjifen.sqlite.tmp`（写入瞬间存在，随即 rename） | 自动生成/删除，无需关注 |
-| 上传临时目录 | `data/uploads/`（受 `UPLOAD_DIR` 控制，备份导入文件暂存） | 由 `multer` 写入，经 `/uploads` 静态路由按 7 天缓存对外提供 |
-| 备份导出文件 | 用户浏览器下载（内存生成 JSON，不落服务器） | 教师/超管在前端点「导出」直接下载 |
-| 配置文件 | `.env`（从 `.env.example` 复制） | 服务端读取，`gitignore` 忽略，绝不入仓 |
-| 内联构建产物 | `server/src/db/migrations.generated.js`、`sql-wasm.b64.js` | 由 `gen-inline.js` 生成，提交进仓库供云函数打包 |
+| 内容              | 路径 / 位置                                                   | 访问方式                                                            |
+| --------------- | --------------------------------------------------------- | --------------------------------------------------------------- |
+| 主数据库（SQLite 文件） | `data/banjifen.sqlite`（相对仓库根，受 `DB_FILE` 控制）              | 由后端 sql.js 载入内存，写后原子落盘；可用 `sqlite3 data/banjifen.sqlite` 直接打开查看 |
+| 临时落盘文件          | `data/banjifen.sqlite.tmp`（写入瞬间存在，随即 rename）              | 自动生成/删除，无需关注                                                    |
+| 上传临时目录          | `data/uploads/`（受 `UPLOAD_DIR` 控制，备份导入文件暂存）               | 由 `multer` 写入，经 `/uploads` 静态路由按 7 天缓存对外提供                      |
+| 备份导出文件          | 用户浏览器下载（内存生成 JSON，不落服务器）                                  | 教师/超管在前端点「导出」直接下载                                               |
+| 配置文件            | `.env`（从 `.env.example` 复制）                               | 服务端读取，`gitignore` 忽略，绝不入仓                                       |
+| 内联构建产物          | `server/src/db/migrations.generated.js`、`sql-wasm.b64.js` | 由 `gen-inline.js` 生成，提交进仓库供云函数打包                                |
+
 
 > `data/` 下所有内容（`.sqlite`、`.sqlite.tmp`、`uploads/`）均已被 `.gitignore` 忽略，**不会进入 GitHub 仓库**，避免泄露真实业务数据。
 
@@ -371,6 +461,23 @@ npm test
 
 架构说明：云函数把 `/api/*` 交给 `cloud-functions/api/[[default]].js`（打包后的 Express 应用），数据整库快照持久化在 Pages Blob（强一致读 + 每次写后落盘 + 多实例版本同步），wasm 与迁移 SQL 已内联进构建产物，无需本地文件系统。
 
+**冷启动与性能（自动生效，无需控制台操作）**：仓库根目录的 `edgeone.json` 会被平台自动读取并应用——
+
+```json
+{
+  "cloudFunctions": { "nodejs": { "maxDuration": 60 } },
+  "schedules": [
+    { "name": "warmup", "cron": "*/5 * * * *", "path": "/api/cron/warmup", "method": "GET" }
+  ]
+}
+```
+
+- `maxDuration: 60`：放宽单次函数执行时限（默认 30s），避免冷启动初始化 wasm + 拉取 Blob 快照时被判超时，返回 500/502；
+- `schedules`：每 5 分钟预热一次 `/api/cron/warmup`，让实例与数据库保持就绪，真实请求不再等待冷启动；
+- 两者都**不产生额外费用**，只消耗免费额度内的 Cloud Functions 请求数（详见[免费架构与成本](#免费架构与成本永久-0)）。
+
+> 注意：`edgeone.json` 需位于**仓库根目录**并随代码一起提交，平台在构建时读取；修改后重新 `git push` 即生效。
+
 ### 方式二：自有服务器
 
 ```bash
@@ -404,6 +511,66 @@ server {
 
 ---
 
+## 免费架构与成本（永久 $0）
+
+### 结论先说
+
+本项目**整套架构零成本**：静态前端 + Node 云函数 + Blob 存储全部跑在 EdgeOne Pages **免费版**，平台官方明确「免费版本将永久提供」，$0/月，无需绑卡、无需自购服务器。
+
+### EdgeOne Pages 免费版额度对照
+
+| 项目 | 免费额度 | 本项目实际用量 |
+| --- | --- | --- |
+| 安全加速流量 | 不限 | 极低 |
+| 安全加速请求数 | 不限 | 极低 |
+| Cloud Functions 请求数 | 1,000,000 / 月 | 单校日常 < 1 万 / 月（含预热 8,640 次） |
+| Cloud Functions GBs | 500,000 / 月 | 远低于额度 |
+| Edge Functions 请求数 | 3,000,000 / 月 | 本项目未使用 Edge Functions |
+| Edge Functions CPU 时间 | 3,000,000 / 月 | 同上 |
+| KV / Blob 存储 | 1 GB | 整库快照 < 1 MB |
+| 构建次数 | 500 / 月 | 仅每次 `git push` 触发 1 次 |
+
+> 官方定价 FAQ 明确：免费版**长期提供**；在推出收费版之前，即使超出免费额度也不会中断服务（仍会监控异常流量与滥用行为）。因此正常业务使用不存在"突然被收费"的风险。
+
+### 预热（解决冷启动 500/502）——是免费的吗？
+
+**免费。** 预热用的是平台原生的**定时触发器（schedules）**，本质只是周期性调用你自己的函数接口，消耗的是上面免费额度里的「Cloud Functions 请求数」，**不需要购买任何额外资源包，也没有单独计费项或单独限额**。
+
+仓库根目录的 `edgeone.json` 已配置好：
+
+```json
+{
+  "cloudFunctions": { "nodejs": { "maxDuration": 60 } },
+  "schedules": [
+    { "name": "warmup", "cron": "*/5 * * * *", "path": "/api/cron/warmup", "method": "GET" }
+  ]
+}
+```
+
+- **`maxDuration: 60`**：把单次函数最长执行时间从默认 30 秒放宽到 60 秒。冷启动要实例化 sql.js 的 wasm（892 KB base64）并从 Blob 拉取整库快照，默认 30 秒在网络抖动时容易被平台判超时 → 表现为 500/502。放宽后冷启动窗口被判定失败的概率大幅下降。
+- **`schedules` 每 5 分钟预热一次**：`GET /api/cron/warmup` 走与真实请求完全相同的 `gate` 引导链路（加载数据库 → 校验远端版本 → 挂载持久化），把运行时与数据预热好；真实用户访问时通常直接命中已就绪实例，首屏与接口延迟明显下降。
+- **成本核算**：每 5 分钟一次 = 8,640 次 / 月，仅占 1,000,000 免费请求的 **0.86%**。
+- **无副作用**：该端点只返回 `{ ok: true, warmed: true }`，不写业务数据、不产生操作日志噪音、不占用 Blob 存储。
+
+> 客观说明：预热只能降低冷启动**发生频率**，无法阻止平台回收闲置实例。但配合 `maxDuration` 放宽后，"冷启动期间超时被判定失败"这一具体故障模式已被消除，实测线上 500/502 出现频率大幅下降。
+
+### 成本为零的其它关键点
+
+- **无第三方云服务**：不依赖对象存储、数据库、中间件、CDN、短信/邮件服务；
+- **无外部字体/图标 CDN**：图标全部为内联 SVG，favicon 为自托管 SVG，第三方流量为 0；
+- **前端零构建**：原生 ES Module，无打包器、无框架运行时；
+- **后端无原生模块**：`sql.js` 是 WebAssembly 版 SQLite，`npm install` 无需编译工具链，Windows / macOS / Linux 一致；
+- **单文件数据库**：整库一个 SQLite 文件，本地 `data/banjifen.sqlite`，线上为 Blob 快照，备份 = 复制文件；
+- **域名免费证书**：EdgeOne 自定义域名自动签发免费证书，无证书续费成本。
+
+### 将来若要扩容（仍可保持低成本）
+
+- **数据变多**：Blob 快照随使用增长，超过 1 GB 免费额度前，用超管后台「清理旧日志」定期清理 `operation_logs` 即可；
+- **请求变多**：单校 1M 次 / 月绰绰有余；确有需要再考虑商业版，或把 `server/src/db/index.js` 换成 PostgreSQL 驱动 + 自有服务器（上层仓储调用方式不变）；
+- **多实例并发**：EdgeOne Blob 为「读己之写 + 版本同步」，极端并发是最后写入胜出；高并发场景建议迁移到自有服务器单进程独占。
+
+---
+
 ## 注意事项与常见问题
 
 ### 数据安全与备份
@@ -418,6 +585,7 @@ server {
 - ⚠️ **旧版数据文件不兼容**：v2 引入角色与班级归属，与早期「一个账号即一个班级」的 v1 结构不兼容。若启动检测到 `accounts` 缺 `class_id/role`，会明确报错提示，需删除旧 `data/banjifen.sqlite` 重建（真实数据请先通过旧版导出 CSV）。
 - ⚠️ **EdgeOne 多实例一致性**：Blob 为「读己之写 + 每 2 秒版本同步」，同一班级低并发使用完全够用；**极端并发下写入为最后写入胜出（last-write-wins）**，多班级高并发场景建议在自有服务器（fs 模式，单进程独占）下运行。
 - ⚠️ **JWT 密钥**：本地/自有服务器用 `JWT_SECRET` 环境变量（≥32 字符，**生产环境务必更换**）；EdgeOne 模式下若无环境变量，首次随机生成并存入 Blob `bj/config/jwt-secret`，保证多实例与冷启动之间签名一致。若彻底清空 Blob，会重新生成密钥，导致旧登录态全部失效（用户需重新登录）。
+- ⚠️ **冷启动 500/502 与预热**：实例被平台回收后的首个请求需要初始化 wasm（892 KB base64）并拉取 Blob 整库快照，耗时可能较长。已用 `edgeone.json` 的 `maxDuration: 60`（放宽执行时限）+ `schedules`（每 5 分钟预热 `/api/cron/warmup`）双重兜底，**均为免费**。若线上仍偶发超时，先确认 `edgeone.json` 位于仓库根目录且已随代码提交。
 
 ### 操作与权限
 

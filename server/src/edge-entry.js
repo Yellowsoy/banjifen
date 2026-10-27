@@ -98,7 +98,8 @@ function createEdgeApp() {
       // 平台把 /api/* 路由到 cloud-functions/api/[[default]].js 时会剥掉 /api 前缀，这里统一还原
       (req, res, next) => {
         if (req.path === '/health') return next();
-        req.url = `/api${req.url}`;
+        // 平台已剥掉 /api 前缀的普通请求补回；定时触发器(cron)直接带 /api 前缀，避免重复拼接
+        if (!req.path.startsWith('/api')) req.url = `/api${req.url}`;
         next();
       },
       gate,

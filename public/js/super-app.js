@@ -880,23 +880,62 @@ export async function mountSuperApp({ logout }) {
     return undefined;
   });
 
+  // 下拉菜单定位：改用 fixed 定位，避开祖先 overflow:hidden 裁剪；贴近视口底部时向上翻转
+  function positionDropdown(dropdown) {
+    const btn = dropdown.querySelector('[data-more]');
+    const menu = dropdown.querySelector('.dropdown-menu');
+    if (!btn || !menu) return;
+    const r = btn.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.right = 'auto';
+    menu.style.left = `${Math.max(8, r.right - menu.offsetWidth)}px`;
+    let top = r.bottom + 6;
+    const placeAbove = top + menu.offsetHeight > window.innerHeight - 8;
+    if (placeAbove) top = Math.max(8, r.top - menu.offsetHeight - 6);
+    menu.style.top = `${top}px`;
+    menu.classList.toggle('drop-up', placeAbove);
+  }
+  function resetDropdownMenu(dropdown) {
+    const menu = dropdown.querySelector('.dropdown-menu');
+    if (!menu) return;
+    menu.style.position = menu.style.top = menu.style.left = menu.style.right = '';
+    menu.classList.remove('drop-up');
+  }
+
   const handleDropdown = (tableSel, onAction) => {
     $(tableSel).addEventListener('click', async (e) => {
       const more = e.target.closest('[data-more]');
       if (more) {
         const dropdown = more.closest('[data-dropdown]');
         const wasOpen = dropdown.classList.contains('open');
-        $$('[data-dropdown]').forEach((d) => d.classList.remove('open'));
-        dropdown.classList.toggle('open', !wasOpen);
+        $$('[data-dropdown]').forEach((d) => {
+          d.classList.remove('open');
+          resetDropdownMenu(d);
+        });
+        if (!wasOpen) {
+          dropdown.classList.add('open');
+          positionDropdown(dropdown);
+        }
         return;
       }
       const act = e.target.closest('[data-act]');
       if (!act) return;
-      $$('[data-dropdown]').forEach((d) => d.classList.remove('open'));
+      $$('[data-dropdown]').forEach((d) => {
+        d.classList.remove('open');
+        resetDropdownMenu(d);
+      });
       const id = act.closest('tr[data-id]').dataset.id;
       await onAction(act.dataset.act, id);
     });
   };
+
+  // 滚动/缩放时收起已展开的下拉，避免 fixed 菜单脱离触发按钮
+  window.addEventListener('scroll', () => {
+    $$('[data-dropdown].open').forEach((d) => {
+      d.classList.remove('open');
+      resetDropdownMenu(d);
+    });
+  }, true);
 
   handleDropdown('#classTable', async (action, id) => {
     const cls = view.classes.items.find((c) => c.id === id);
@@ -966,6 +1005,9 @@ export async function mountSuperApp({ logout }) {
   });
 
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('[data-dropdown]')) $$('[data-dropdown]').forEach((d) => d.classList.remove('open'));
+    if (!e.target.closest('[data-dropdown]')) $$('[data-dropdown]').forEach((d) => {
+      d.classList.remove('open');
+      resetDropdownMenu(d);
+    });
   });
 }
