@@ -1,24 +1,36 @@
 'use strict';
 /** Excel 读写工具：统一表头映射与容错，避免各模块重复实现 */
-const XLSX = require('xlsx');
+
+/**
+ * xlsx（SheetJS）包体约 7MB，require 本身耗时 ~60ms。
+ * 云函数冷启动时并不需要 Excel 能力（只有导入/导出成绩、导入名单才会用到），
+ * 因此改为首次使用时才 require，避免拖慢冷启动与首请求。
+ */
+let XLSX = null;
+function xlsx() {
+  if (!XLSX) XLSX = require('xlsx');
+  return XLSX;
+}
 
 function readSheet(buffer) {
+  const X = xlsx();
   // codepage 65001：CSV 按 UTF-8 解析，避免中文表头（姓名/成绩）被当作 Latin-1 而匹配不到列
-  const wb = XLSX.read(buffer, { type: 'buffer', cellDates: false, codepage: 65001 });
+  const wb = X.read(buffer, { type: 'buffer', cellDates: false, codepage: 65001 });
   const first = wb.SheetNames[0];
   if (!first) return [];
-  const rows = XLSX.utils.sheet_to_json(wb.Sheets[first], { defval: '', raw: false });
+  const rows = X.utils.sheet_to_json(wb.Sheets[first], { defval: '', raw: false });
   return rows;
 }
 
 function buildBuffer(sheets) {
-  const wb = XLSX.utils.book_new();
+  const X = xlsx();
+  const wb = X.utils.book_new();
   for (const { name, rows, cols } of sheets) {
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const ws = X.utils.json_to_sheet(rows);
     if (cols) ws['!cols'] = cols.map((w) => ({ wch: w }));
-    XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 30));
+    X.utils.book_append_sheet(wb, ws, name.slice(0, 30));
   }
-  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  return X.write(wb, { type: 'buffer', bookType: 'xlsx' });
 }
 
 /** 从一行对象里按候选表头名取值（忽略空格与大小写） */

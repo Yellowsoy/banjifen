@@ -11,7 +11,6 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
-const initSqlJs = require('sql.js');
 const { config } = require('../config');
 const { logger } = require('../core/logger');
 const MIGRATIONS = require('./migrations.generated');
@@ -44,11 +43,18 @@ function getBlobStore() {
   return blobStore;
 }
 
+/**
+ * 读取远端整库快照。
+ * 性能：meta 与 snapshot 两个 Blob 读并行发起（原本串行，冷启动多一次 RTT）。
+ * 一致性：仍用 strong 读，保证读到的是同一版本的快照。
+ */
 async function blobReadSnapshot() {
   const store = getBlobStore();
-  const meta = await store.get(BLOB_META_KEY, { type: 'json', consistency: 'strong' });
+  const [meta, buf] = await Promise.all([
+    store.get(BLOB_META_KEY, { type: 'json', consistency: 'strong' }),
+    store.get(BLOB_SNAPSHOT_KEY, { type: 'arrayBuffer', consistency: 'strong' }),
+  ]);
   if (!meta || !meta.v) return null;
-  const buf = await store.get(BLOB_SNAPSHOT_KEY, { type: 'arrayBuffer', consistency: 'strong' });
   if (!buf) return null;
   return { version: meta.v, bytes: new Uint8Array(buf) };
 }
@@ -182,11 +188,23 @@ function currentVersion() {
   return snapshotVersion;
 }
 
-/** 云函数多实例：请求开始前检查远端是否有更新版本（edge-entry 调用） */
-async function refreshIfRemoteNewer() {
+/**
+ * 云函数多实例：请求开始前检查远端是否有更新版本（edge-entry 调用）。
+ * 性能：远端 meta 读是网络往返，这里做「短 TTL 缓存」——
+ * 2 秒内的重复检查直接复用上次结果，避免每个请求都打一次 Blob。
+ */
+const FRESH_CHECK_TTL_MS = 2000;
+let lastFreshCheckAt = 0;
+let lastFreshMeta = null;
+
+async function refreshIfRemoteNewer(force = false) {
   if (!BLOB_MODE || !db || closed) return;
+  const now = Date.now();
+  if (!force && now - lastFreshCheckAt < FRESH_CHECK_TTL_MS) return;
+  lastFreshCheckAt = now;
   const store = getBlobStore();
   const meta = await store.get(BLOB_META_KEY, { type: 'json', consistency: 'strong' });
+  lastFreshMeta = meta;
   if (meta && typeof meta.v === 'number' && meta.v !== snapshotVersion) {
     const buf = await store.get(BLOB_SNAPSHOT_KEY, { type: 'arrayBuffer', consistency: 'strong' });
     if (buf) loadSnapshot(new Uint8Array(buf), meta.v);
@@ -250,6 +268,13 @@ async function init() {
     wasmBinary = Buffer.from(require('./sql-wasm.b64.js').data, 'base64');
   } catch {
     wasmBinary = null;
+  }
+  // loader 同样内联进仓库（46KB），生产环境无需安装 sql.js 整个包（~30MB）
+  let initSqlJs;
+  try {
+    initSqlJs = require('./sql-wasm-loader');
+  } catch {
+    initSqlJs = require('sql.js');
   }
   const SQL = await initSqlJs(wasmBinary ? { wasmBinary } : {});
   sqlFactory = SQL;

@@ -1,0 +1,51 @@
+name: EdgeOne 云函数预热
+
+# 为什么需要这个 workflow：
+#   线上偶发 500/502 出现在云函数冷启动后的首次请求。
+#   EdgeOne Pages 自带的 schedules（edgeone.json）官方限制「cron 最小间隔为一天」，
+#   无法做分钟级保活，因此改用 GitHub Actions 定时 ping 预热端点。
+#
+# 成本核算（永久 $0）：
+#   - GitHub 私有仓库 Free 计划：Actions 2,000 分钟/月。本 workflow 每次运行约 10~20 秒，
+#     GitHub 按「分钟」向上取整计费，即每次 ≈ 1 分钟。
+#   - 每 10 分钟一次 → 6 次/小时 → 144 次/天 → 约 4,320 次/月 ≈ 4,320 分钟/月，
+#     超出 2,000 分钟额度，因此改用每 30 分钟一次：
+#         2 次/小时 → 48 次/天 → 约 1,440 次/月 ≈ 1,440 分钟/月（在 2,000 内）。
+#   - EdgeOne 免费版 Cloud Functions：每月 1,000,000 次请求。1,440 次/月 ≈ 0.14%，可忽略。
+#   - 若将来把仓库改为 Public，GitHub Actions 对公开仓库完全免费，成本直接归零。
+#
+# 如需更激进的保活（如每 5 分钟）：
+#   调整 cron 频率的同时，请确认 GitHub Actions 额度；或改用自托管 runner / 外部 cron 服务。
+
+on:
+  schedule:
+    # 每 30 分钟一次（避开整点，避开流量高峰的调度延迟）
+    - cron: '7,37 * * * *'
+  workflow_dispatch: # 允许手动立即触发一次
+
+concurrency:
+  group: edgeone-warmup
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  warmup:
+    name: 预热云函数实例
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 预热
+        env:
+          # 目标站点；如换域名，改这里即可
+          WARMUP_URL: https://bj.5166966.xyz/api/cron/warmup
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/warmup.out -w '%{http_code}' --max-time 25 "$WARMUP_URL" || echo 000)
+          body=$(head -c 200 /tmp/warmup.out 2>/dev/null || true)
+          echo "HTTP $code  $body"
+          if [ "$code" != "200" ]; then
+            echo "::warning::预热请求返回 $code（实例可能已被回收或接口异常）"
+            exit 0   # 预热失败不阻塞流水线
+          fi

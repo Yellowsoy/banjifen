@@ -92,27 +92,35 @@
       options.body = JSON.stringify(body);
     }
     const res = await fetch(`${BASE}${path}`, options);
-    if (!res.ok) {
+    const ct = res.headers.get('content-type') || '';
+    // 服务异常时（如云函数路由失效回退到 index.html）响应会是 200 + text/html，
+    // 此时必须当作失败处理，否则会把 HTML 当 JSON 解析，误判「已登录」并陷入无限跳转。
+    const isJson = ct.includes('application/json');
+    if (!res.ok || !isJson) {
       let message = `请求失败（${res.status}）`;
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
+      if (isJson) {
         try {
           const data = await res.json();
           if (data && data.error) message = data.error.message || message;
         } catch { /* 忽略解析失败 */ }
+      } else {
+        message = '服务暂时不可用，请稍后重试';
       }
       throw new Error(message);
     }
-    const ct = res.headers.get('content-type') || '';
-    return ct.includes('application/json') ? res.json() : res.text();
+    return res.json();
   }
 
   /** 已登录用户直接进入工作台，避免重复登录 */
   async function skipIfAuthed() {
     try {
-      await api('/auth/me');
-      window.location.replace('/');
-      return true;
+      const me = await api('/auth/me');
+      // 必须确认拿到了真实账号信息才跳转：否则会与首页互相踢回，形成无限跳转循环
+      if (me && me.account && me.account.username) {
+        window.location.replace('/');
+        return true;
+      }
+      return false;
     } catch {
       return false;
     }

@@ -39,6 +39,19 @@ async function parse(res) {
   return res.text();
 }
 
+/**
+ * 校验响应确实是 JSON。
+ * 背景：若云函数路由异常（SPA 回退把 /api/* 回成 index.html），响应会是 200 + text/html，
+ * 此时若把 HTML 当数据使用，登录页会误判「已登录」并跳首页，首页又拿不到账号再跳回登录页，
+ * 形成无限跳转循环并持续消耗接口额度。这里统一识别并抛出明确错误，快速失败。
+ */
+function assertJson(res, path) {
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new ApiError('服务响应异常，请稍后重试', res.status || 502, 'INVALID_RESPONSE', { path });
+  }
+}
+
 async function refresh() {
   if (!refreshPromise) {
     refreshPromise = rawFetch('/auth/refresh', { method: 'POST', headers: { 'x-requested-with': 'fetch' }, credentials: 'same-origin' })
@@ -75,6 +88,9 @@ export async function request(path, options = {}) {
     }
     throw new ApiError(message, res.status, code, details);
   }
+  // 2xx 但不是 JSON（如 SPA 回退返回 index.html）：视为服务异常，快速失败，
+  // 避免上层把 HTML 当数据解析而进入无限跳转循环。
+  assertJson(res, path);
   if (options.raw) return res;
   return parse(res);
 }

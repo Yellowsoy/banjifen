@@ -54,12 +54,12 @@ let bootstrapPromise = null;
 function bootstrap() {
   if (!bootstrapPromise) {
     bootstrapPromise = (async () => {
-      await db.init();
+      // 性能：数据库引导（拉远端快照）与 JWT 密钥准备互不依赖，并行执行以缩短冷启动耗时
+      await Promise.all([db.init(), ensureJwtSecret()]);
       if (!db.hasStoredData()) {
         log.info('空库：写入种子数据');
         runSeed({ silent: true });
       }
-      await ensureJwtSecret();
       await db.persistIfDirty();
       log.info('EdgeOne 引导完成');
     })().catch((err) => {
@@ -70,18 +70,11 @@ function bootstrap() {
   return bootstrapPromise;
 }
 
-const FRESH_TTL_MS = 2000;
-let lastFreshCheck = 0;
-
 async function gate(req, res, next) {
   try {
     await bootstrap();
-    // 多实例同步：别的实例可能刚写过快照
-    const now = Date.now();
-    if (now - lastFreshCheck > FRESH_TTL_MS) {
-      lastFreshCheck = now;
-      await db.refreshIfRemoteNewer();
-    }
+    // 多实例同步：别的实例可能刚写过快照（db 层自带 2s TTL，避免每请求一次 Blob 往返）
+    await db.refreshIfRemoteNewer();
     // 响应结束后把本请求产生的变更异步写入远端
     res.on('finish', () => {
       db.persistIfDirty().catch((err) => log.error('持久化失败', { err: err.message }));

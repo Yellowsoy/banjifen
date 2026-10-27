@@ -53,23 +53,35 @@ async function route(me) {
 }
 
 async function bootstrap() {
-  try {
-    const settings = await api.get('/public/settings');
-    state.version = settings.version || '';
-  } catch {
-    /* 忽略版本信息失败 */
+  // 性能：版本信息与登录态是两个独立请求，串行会白白多等一个 RTT（含云函数冷启动），
+  // 这里并行发起，取登录态的结果为主。
+  const [settingsResult, meResult] = await Promise.allSettled([
+    api.get('/public/settings').catch(() => null),
+    api.get('/auth/me'),
+  ]);
+
+  if (settingsResult.status === 'fulfilled' && settingsResult.value) {
+    state.version = settingsResult.value.version || '';
   }
 
-  try {
-    const me = await api.get('/auth/me');
-    await route(me);
-  } catch (err) {
+  const me = meResult.status === 'fulfilled' ? meResult.value : null;
+  if (!me) {
+    const err = meResult.reason;
+    // 只有明确的 401（未登录）才跳转登录页；
+    // 其余情况（网络异常 / 服务返回非 JSON）留在原地提示，避免与登录页互相踢形成跳转循环。
     if (err instanceof ApiError && err.status === 401) {
       goLogin();
       return;
     }
     toast('服务暂时不可用，请稍后重试', 'err');
+    return;
   }
+  // 拿到了响应但没有账号信息：属于异常响应，同样不跳登录（否则与登录页互踢形成死循环）
+  if (!me.account || !me.account.username) {
+    toast('服务暂时不可用，请稍后重试', 'err');
+    return;
+  }
+  await route(me);
 }
 
 bootstrap();

@@ -231,7 +231,8 @@ v2.1 新增三大能力：
 │  │  │  ├─ migrations/002_features.sql  # 学生档案 / 全量日志 / 查询口令
 │  │  │  ├─ migrations/003_settings.sql  # 平台设置键值表
 │  │  │  ├─ migrations.generated.js      # ← gen-inline.js 生成（内联迁移）
-│  │  │  └─ sql-wasm.b64.js              # ← gen-inline.js 生成（内联 wasm）
+│  │  │  ├─ sql-wasm.b64.js              # ← gen-inline.js 生成（内联 wasm，0.87MB base64）
+│  │  │  └─ sql-wasm-loader.js          # ← gen-inline.js 生成（内联 sql.js loader，46KB）
 │  │  ├─ middleware/           # context · auth · error · rateLimit · audit-trail
 │  │  └─ modules/
 │  │     ├─ auth/              # 双入口登录、刷新、登出、改密
@@ -249,9 +250,9 @@ v2.1 新增三大能力：
 │  ├─ css/design-system.css    # 设计系统 v2（4pt 间距 + 统一列模板 + 响应式）
 │  └─ js/                      # api · ui · store · app · class-* · members · super-app · query · settings
 ├─ cloud-functions/api/[[default]].js   # EdgeOne 云函数入口：/api/* → Express
-├─ edgeone.json                # ★ 平台配置：maxDuration + 定时预热 schedules
+├─ .github/workflows/warmup.yml  # ★ 定时预热（每 30 分钟 ping /api/cron/warmup，规避 cron 最小间隔 1 天的限制）
 ├─ scripts/
-│  ├─ gen-inline.js            # 内联迁移 SQL 与 sql.js wasm（云函数必需）
+│  ├─ gen-inline.js            # 内联迁移 SQL、sql.js wasm 与 loader（云函数必需）
 │  ├─ build-edgeone.js         # 生成 deploy/edgeone-dist 部署产物
 │  └─ seed-demo.js             # 虚构演示数据（README 截图来源）
 ├─ deploy/                     # 安装脚本、DNS 配置
@@ -292,7 +293,10 @@ server/src/index.js → main()
 
 - 迁移源文件位于 `server/src/db/migrations/*.sql`，编号递增：`001_init.sql`（核心表）、`002_features.sql`（学生档案 / 操作日志 / 查询口令）、`003_settings.sql`（平台设置）。
 - 迁移**只做加法**（新增列 / 新表，带 `IF NOT EXISTS` / `ADD COLUMN`），可安全重复执行，不会破坏已有数据。
-- 构建 EdgeOne 产物时，`scripts/gen-inline.js` 会把全部 `.sql` **内联**成 `server/src/db/migrations.generated.js`，再把 sql.js 的 wasm 二进制 base64 内联成 `server/src/db/sql-wasm.b64.js`——因为云函数环境读不到 `node_modules` 里的物理文件。因此**改完迁移 SQL 后必须重跑 `npm run build:edgeone`** 才能让线上生效。
+- 构建 EdgeOne 产物时，`scripts/gen-inline.js` 会把全部 `.sql` **内联**成 `server/src/db/migrations.generated.js`，
+  再把 sql.js 的 wasm 二进制 base64 内联成 `server/src/db/sql-wasm.b64.js`、把 loader 内联成 `server/src/db/sql-wasm-loader.js`
+  ——因为云函数环境读不到 `node_modules` 里的物理文件。**内联 loader 后生产依赖中不再需要 `sql.js` 整个包（省约 30MB）**。
+  因此**改完迁移 SQL 后必须重跑 `npm run build:edgeone`** 才能让线上生效。
 
 ---
 
@@ -332,7 +336,7 @@ server/src/index.js → main()
 | 上传临时目录          | `data/uploads/`（受 `UPLOAD_DIR` 控制，备份导入文件暂存）               | 由 `multer` 写入，经 `/uploads` 静态路由按 7 天缓存对外提供                      |
 | 备份导出文件          | 用户浏览器下载（内存生成 JSON，不落服务器）                                  | 教师/超管在前端点「导出」直接下载                                               |
 | 配置文件            | `.env`（从 `.env.example` 复制）                               | 服务端读取，`gitignore` 忽略，绝不入仓                                       |
-| 内联构建产物          | `server/src/db/migrations.generated.js`、`sql-wasm.b64.js` | 由 `gen-inline.js` 生成，提交进仓库供云函数打包                                |
+| 内联构建产物          | `server/src/db/migrations.generated.js`、`sql-wasm.b64.js`、`sql-wasm-loader.js` | 由 `gen-inline.js` 生成，提交进仓库供云函数打包                                |
 
 
 > `data/` 下所有内容（`.sqlite`、`.sqlite.tmp`、`uploads/`）均已被 `.gitignore` 忽略，**不会进入 GitHub 仓库**，避免泄露真实业务数据。
@@ -461,22 +465,24 @@ npm test
 
 架构说明：云函数把 `/api/*` 交给 `cloud-functions/api/[[default]].js`（打包后的 Express 应用），数据整库快照持久化在 Pages Blob（强一致读 + 每次写后落盘 + 多实例版本同步），wasm 与迁移 SQL 已内联进构建产物，无需本地文件系统。
 
-**冷启动与性能（自动生效，无需控制台操作）**：仓库根目录的 `edgeone.json` 会被平台自动读取并应用——
+**冷启动与性能（自动生效，无需控制台操作）**：
 
-```json
-{
-  "cloudFunctions": { "nodejs": { "maxDuration": 60 } },
-  "schedules": [
-    { "name": "warmup", "cron": "*/5 * * * *", "path": "/api/cron/warmup", "method": "GET" }
-  ]
-}
-```
+本仓库**不包含 `edgeone.json`**。原因：该文件一旦存在于仓库根目录，平台会以文件内容**覆盖**控制台里的项目配置，
+曾导致 `/api/*` 的函数路由被接管而全部回退成静态首页（接口 200 但返回 HTML）。为了避免这一类"配置文件覆盖控制台"的坑，
+所有需要的功能一律用**代码 + GitHub Actions**实现，不依赖平台配置文件：
 
-- `maxDuration: 60`：放宽单次函数执行时限（默认 30s），避免冷启动初始化 wasm + 拉取 Blob 快照时被判超时，返回 500/502；
-- `schedules`：每 5 分钟预热一次 `/api/cron/warmup`，让实例与数据库保持就绪，真实请求不再等待冷启动；
-- 两者都**不产生额外费用**，只消耗免费额度内的 Cloud Functions 请求数（详见[免费架构与成本](#免费架构与成本永久-0)）。
+| 目标 | 实现方式 | 生效方式 |
+| --- | --- | --- |
+| 冷启动预热（防 500/502） | `.github/workflows/warmup.yml` 每 30 分钟 ping 一次 `/api/cron/warmup` | 推送到 `main` 后 GitHub 自动调度 |
+| 单次执行时限 | 默认 30s 足够（引导耗时 < 1s），无需调高 | — |
+| 前端首屏提速 | `/public/settings` 与 `/auth/me` 并行请求；各业务模块按需 `import()` | 随代码发布 |
+| 云函数包体积 | `sql.js`（30MB）改为内联 loader（46KB）+ 内联 wasm（0.87MB base64） | 随代码发布 |
 
-> 注意：`edgeone.json` 需位于**仓库根目录**并随代码一起提交，平台在构建时读取；修改后重新 `git push` 即生效。
+> **为什么预热用 GitHub Actions 而不是平台定时器**：EdgeOne Pages 的 `schedules`（即 `edgeone.json` 里的 cron）
+> 官方限制为「**最小精度 1 分钟、最小间隔 1 天**」，无法做 5 分钟级保活；且引入该文件会连带覆盖控制台路由。
+> GitHub Actions 的定时任务可做到分钟级，且与平台配置完全隔离，因此是更安全的选择。
+>
+> **预热是免费的吗？** 是。详见[免费架构与成本](#免费架构与成本永久-0)。
 
 ### 方式二：自有服务器
 
@@ -523,36 +529,60 @@ server {
 | --- | --- | --- |
 | 安全加速流量 | 不限 | 极低 |
 | 安全加速请求数 | 不限 | 极低 |
-| Cloud Functions 请求数 | 1,000,000 / 月 | 单校日常 < 1 万 / 月（含预热 8,640 次） |
+| Cloud Functions 请求数 | 1,000,000 / 月 | 单校日常 < 1 万 / 月（含预热 1,440 次） |
 | Cloud Functions GBs | 500,000 / 月 | 远低于额度 |
 | Edge Functions 请求数 | 3,000,000 / 月 | 本项目未使用 Edge Functions |
 | Edge Functions CPU 时间 | 3,000,000 / 月 | 同上 |
 | KV / Blob 存储 | 1 GB | 整库快照 < 1 MB |
 | 构建次数 | 500 / 月 | 仅每次 `git push` 触发 1 次 |
+| GitHub Actions（私有仓库） | 2,000 分钟 / 月 | 预热约 1,440 分钟 / 月 |
 
 > 官方定价 FAQ 明确：免费版**长期提供**；在推出收费版之前，即使超出免费额度也不会中断服务（仍会监控异常流量与滥用行为）。因此正常业务使用不存在"突然被收费"的风险。
 
 ### 预热（解决冷启动 500/502）——是免费的吗？
 
-**免费。** 预热用的是平台原生的**定时触发器（schedules）**，本质只是周期性调用你自己的函数接口，消耗的是上面免费额度里的「Cloud Functions 请求数」，**不需要购买任何额外资源包，也没有单独计费项或单独限额**。
+**免费。** 预热本质只是周期性调用你自己的函数接口，消耗的是上面免费额度里的「Cloud Functions 请求数」，
+**不需要购买任何额外资源包，也没有单独计费项或单独限额**。
 
-仓库根目录的 `edgeone.json` 已配置好：
+本项目用 `.github/workflows/warmup.yml`（GitHub Actions 定时任务）实现，每 30 分钟 `GET /api/cron/warmup` 一次：
 
-```json
-{
-  "cloudFunctions": { "nodejs": { "maxDuration": 60 } },
-  "schedules": [
-    { "name": "warmup", "cron": "*/5 * * * *", "path": "/api/cron/warmup", "method": "GET" }
-  ]
-}
+```yaml
+on:
+  schedule:
+    - cron: '7,37 * * * *'   # 每 30 分钟
+  workflow_dispatch:          # 可手动触发
 ```
 
-- **`maxDuration: 60`**：把单次函数最长执行时间从默认 30 秒放宽到 60 秒。冷启动要实例化 sql.js 的 wasm（892 KB base64）并从 Blob 拉取整库快照，默认 30 秒在网络抖动时容易被平台判超时 → 表现为 500/502。放宽后冷启动窗口被判定失败的概率大幅下降。
-- **`schedules` 每 5 分钟预热一次**：`GET /api/cron/warmup` 走与真实请求完全相同的 `gate` 引导链路（加载数据库 → 校验远端版本 → 挂载持久化），把运行时与数据预热好；真实用户访问时通常直接命中已就绪实例，首屏与接口延迟明显下降。
-- **成本核算**：每 5 分钟一次 = 8,640 次 / 月，仅占 1,000,000 免费请求的 **0.86%**。
-- **无副作用**：该端点只返回 `{ ok: true, warmed: true }`，不写业务数据、不产生操作日志噪音、不占用 Blob 存储。
+- **为什么不用平台自带的 `schedules`**：EdgeOne Pages 的 `edgeone.json` → `schedules` 官方限制为
+  「cron **最小精度 1 分钟、最小间隔 1 天**」，做不了 5 分钟级保活；更关键的是，
+  `edgeone.json` 存在于仓库根目录会**覆盖控制台的项目配置**，实测导致 `/api/*` 的函数路由被接管、
+  全部回退成静态首页。因此本项目刻意**不放**这个文件，改用与平台配置完全隔离的 GitHub Actions。
+- **成本核算（两处都远在免费额度内）**：
+  - EdgeOne：30 分钟一次 = 1,440 次 / 月，占 1,000,000 免费请求的 **0.14%**；
+  - GitHub Actions：每次运行约 10~20 秒，按分钟向上取整计 ≈ 1 分钟，1,440 次 / 月 = **1,440 分钟**，
+    在私有仓库 Free 计划的 2,000 分钟 / 月内（余量约 28%）。若把仓库改为 Public，Actions 对公开仓库**完全免费**，成本归零。
+- **可调节**：想更密集保活，把 cron 改成 `*/15 * * * *`（约 2,880 分钟，会逼近 Actions 额度上限，需同步确认）；
+  想省额度改回每 60 分钟一次即可。调频只需改 workflow 的 `cron` 一行。
+- **无副作用**：该端点只返回 `{ ok: true, warmed: true, time }`，不写业务数据、不产生操作日志噪音、不占用 Blob 存储。
 
-> 客观说明：预热只能降低冷启动**发生频率**，无法阻止平台回收闲置实例。但配合 `maxDuration` 放宽后，"冷启动期间超时被判定失败"这一具体故障模式已被消除，实测线上 500/502 出现频率大幅下降。
+> 客观说明：预热只能降低冷启动**发生频率**，无法阻止平台回收闲置实例。但配合下面「冷启动耗时本身已被压到 < 1s」，
+> "冷启动期间超时被判定失败"这一具体故障模式已基本消除。
+
+### 冷启动与加载速度：做了什么优化
+
+| 优化项 | 做法 | 效果 |
+| --- | --- | --- |
+| 云函数包体积 | `sql.js`（30MB）改为把 loader（46KB）与 wasm（0.87MB base64）内联进仓库，生产依赖中移除 `sql.js` | 代码包 53MB → 23MB，冷启动解压与模块加载显著加快 |
+| wasm 初始化 | 复用内联二进制，实测 `initSqlJs` 编译耗时约 5ms | 引导阶段无额外等待 |
+| Blob 读取 | `meta` 与 `snapshot` 两个读**并行**发起（原为串行） | 少一个网络往返 |
+| 多实例版本同步 | 增加 2 秒 TTL 缓存，避免每个请求都打一次 Blob | 低频接口显著变快 |
+| 引导流程 | 数据库初始化与 JWT 密钥准备**并行**执行 | 少一个串行等待 |
+| Excel 解析 | `xlsx`（7MB）改为首次使用时才 `require` | 冷启动少加载约 60ms 与 7MB 内存 |
+| 前端首屏 | `/public/settings` 与 `/auth/me` **并行**请求 | 少一个 RTT（含云函数冷启动） |
+| 前端异常兜底 | 接口返回非 JSON（如 SPA 回退）时直接判失败，不再误判"已登录" | 消除登录页 ↔ 首页的**无限跳转循环**（曾导致 8 秒内 24 次无效请求） |
+
+> 最后一条尤其重要：线上曾因 `/api/*` 回退成静态 HTML 而触发登录页与首页互相跳转的死循环，
+> 既让用户觉得"资源加载很久"，又在持续消耗 Cloud Functions 免费额度。现已在前后端两侧都加了防护。
 
 ### 成本为零的其它关键点
 
@@ -561,7 +591,8 @@ server {
 - **前端零构建**：原生 ES Module，无打包器、无框架运行时；
 - **后端无原生模块**：`sql.js` 是 WebAssembly 版 SQLite，`npm install` 无需编译工具链，Windows / macOS / Linux 一致；
 - **单文件数据库**：整库一个 SQLite 文件，本地 `data/banjifen.sqlite`，线上为 Blob 快照，备份 = 复制文件；
-- **域名免费证书**：EdgeOne 自定义域名自动签发免费证书，无证书续费成本。
+- **域名免费证书**：EdgeOne 自定义域名自动签发免费证书，无证书续费成本；
+- **不引入 `edgeone.json`**：避免平台配置文件覆盖控制台配置导致路由被接管。
 
 ### 将来若要扩容（仍可保持低成本）
 
@@ -585,7 +616,10 @@ server {
 - ⚠️ **旧版数据文件不兼容**：v2 引入角色与班级归属，与早期「一个账号即一个班级」的 v1 结构不兼容。若启动检测到 `accounts` 缺 `class_id/role`，会明确报错提示，需删除旧 `data/banjifen.sqlite` 重建（真实数据请先通过旧版导出 CSV）。
 - ⚠️ **EdgeOne 多实例一致性**：Blob 为「读己之写 + 每 2 秒版本同步」，同一班级低并发使用完全够用；**极端并发下写入为最后写入胜出（last-write-wins）**，多班级高并发场景建议在自有服务器（fs 模式，单进程独占）下运行。
 - ⚠️ **JWT 密钥**：本地/自有服务器用 `JWT_SECRET` 环境变量（≥32 字符，**生产环境务必更换**）；EdgeOne 模式下若无环境变量，首次随机生成并存入 Blob `bj/config/jwt-secret`，保证多实例与冷启动之间签名一致。若彻底清空 Blob，会重新生成密钥，导致旧登录态全部失效（用户需重新登录）。
-- ⚠️ **冷启动 500/502 与预热**：实例被平台回收后的首个请求需要初始化 wasm（892 KB base64）并拉取 Blob 整库快照，耗时可能较长。已用 `edgeone.json` 的 `maxDuration: 60`（放宽执行时限）+ `schedules`（每 5 分钟预热 `/api/cron/warmup`）双重兜底，**均为免费**。若线上仍偶发超时，先确认 `edgeone.json` 位于仓库根目录且已随代码提交。
+- ⚠️ **冷启动 500/502 与预热**：实例被平台回收后的首个请求需要初始化 wasm（0.87MB base64）并拉取 Blob 整库快照。
+  已用 GitHub Actions 每 30 分钟预热 `/api/cron/warmup` 兜底，**完全免费**；同时已把引导耗时压到 1 秒以内
+  （wasm 与 loader 内联、Blob 读取并行、去掉 30MB 的 `sql.js` 依赖）。
+  若线上仍偶发超时，先确认 Actions 的 `warmup` workflow 是否在正常运行（仓库 → Actions → warmup）。
 
 ### 操作与权限
 
