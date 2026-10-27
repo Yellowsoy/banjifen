@@ -1,5 +1,33 @@
 # 班级积分管理 · Class Points
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Yellowsoy/banjifen?style=flat-square&logo=apache&logoColor=white" alt="License"></a>
+  <img src="https://img.shields.io/github/actions/workflow/status/Yellowsoy/banjifen/warmup.yml?label=warmup&style=flat-square&logo=githubactions&logoColor=white" alt="Warmup">
+  <img src="https://img.shields.io/badge/tests-74%20passed-brightgreen?style=flat-square&logo=jest&logoColor=white" alt="Tests">
+  <img src="https://img.shields.io/badge/version-2.1-0098FF?style=flat-square" alt="Version">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-%3E%3D18.17-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node">
+  <img src="https://img.shields.io/badge/Express-5-000000?style=flat-square&logo=express&logoColor=white" alt="Express">
+  <img src="https://img.shields.io/badge/database-SQLite%20sql.js-003B57?style=flat-square&logo=sqlite&logoColor=white" alt="Database">
+  <img src="https://img.shields.io/badge/frontend-Vanilla%20JS-1572B6?style=flat-square&logo=javascript&logoColor=white" alt="Frontend">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/deploy-EdgeOne%20Pages-00b4ff?style=flat-square" alt="Deploy">
+  <img src="https://img.shields.io/badge/cost-%240%2Fmonth-success?style=flat-square" alt="Cost">
+  <a href="https://bj.5166966.xyz"><img src="https://img.shields.io/badge/demo-bj.5166966.xyz-00b4ff?style=flat-square&logo=googlechrome&logoColor=white" alt="Demo"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/github/stars/Yellowsoy/banjifen?style=flat-square&logo=github" alt="Stars">
+  <img src="https://img.shields.io/github/forks/Yellowsoy/banjifen?style=flat-square&logo=github" alt="Forks">
+  <img src="https://img.shields.io/github/issues/Yellowsoy/banjifen?style=flat-square&logo=github" alt="Issues">
+  <img src="https://img.shields.io/github/last-commit/Yellowsoy/banjifen?style=flat-square&logo=github" alt="Last commit">
+  <img src="https://img.shields.io/github/languages/top/Yellowsoy/banjifen?style=flat-square&logo=github" alt="Top language">
+</p>
+
 一个面向小学班主任的班级积分管理系统：**花名册导入 / 实时加减分 / 积分排行 / 积分排座 / 积分商城 / 成绩分析与学习建议**，配套 **超级管理员 · 班主任 · 老师 · 班干部** 四级角色权限。
 
 v2.1 新增三大能力：
@@ -20,6 +48,7 @@ v2.1 新增三大能力：
 
 - [项目架构总览](#项目架构总览)
 - [核心特性](#核心特性)
+- [快速开始](#快速开始)
 - [重要操作方法（速查）](#重要操作方法速查)
 - [技术栈](#技术栈)
 - [目录结构](#目录结构)
@@ -152,6 +181,48 @@ v2.1 新增三大能力：
 - **全量操作日志**：全部角色、全部模块（班级业务 / 成员 / 超管 / 登录 / 备份 / 对外查询）的每一步写操作，含操作者、角色、班级、目标、摘要、数量、成功或失败、状态码、IP、UA；编辑类操作记录**变更前后快照与字段级 diff**（点任意一行查看详情）；支持按时间 / 班级 / 角色 / 模块 / 结果 / 关键词筛选，导出 CSV，一键清理 N 天前旧日志
 - **数据备份**：班级备份（班级资料 + 成员 + 学生档案 + 积分 + 规则 + 礼物 + 兑换 + 考试成绩 + 座位表）、平台全量备份（全部班级 + 全部账号 + 回收站 + 最近 2 万条日志）；上传 JSON 一键恢复为新班级或覆盖现有班级，失败整体回滚；**备份不含任何密码散列**
 - **成绩对外查询**：为班级生成查询口令（可设有效期、可随时停用），家长打开 `/query.html` 输入口令 + 姓名学号即可免登录查看本人成绩、班均、最高分、班排与积分排名；一个口令只能查到命中的一名学生，家长手机号脱敏展示，失败尝试全部记入操作日志；另设**全局总开关**，超管可一键关闭（登录页入口隐藏、公开查询页不可访问），教师端完全不受影响
+
+---
+
+## 快速开始
+
+### 在线体验（无需安装）
+
+直接访问线上演示站点：<https://bj.5166966.xyz>
+
+| 角色 | 登录账号 | 密码 |
+| --- | --- | --- |
+| 超级管理员 | `admin` | `admin123456` |
+| 班主任（演示班） | `123456` | `123456` |
+
+> 以上为公开仓库中 `.env.example` 的**默认种子账号**，仅供体验；自建部署后请**立即改密**并停用演示账号（见[部署](#方式一edgeone-pages零成本推荐)）。
+
+### 本地运行（自有服务器）
+
+```bash
+# 1. 安装依赖（Node.js ≥ 18.17）
+npm install
+
+# 2.（可选）从样例复制环境变量
+cp .env.example .env
+
+# 3. 启动，默认开发模式，数据落本地 data/banjifen.sqlite
+npm start
+# 浏览器打开 http://localhost:3000
+```
+
+### 一键部署到 EdgeOne Pages（零成本）
+
+1. 在 EdgeOne Pages 控制台「导入 GitHub 仓库」选择 `Yellowsoy/banjifen`；
+2. 构建配置：安装 `npm install`、构建 `node scripts/gen-inline.js && node scripts/build-edgeone.js`、输出目录 `deploy/edgeone-dist`、Node 22；
+3. 此后每次 `git push` 自动构建上线。完整说明见[部署](#部署)。
+
+### 运行测试
+
+```bash
+npm test   # 拉起独立实例，覆盖 74 项集成测试
+# 结果：通过 74，失败 0
+```
 
 ---
 
