@@ -5,17 +5,21 @@ const { BadRequestError } = require('../../core/errors');
 const { config } = require('../../config');
 const query = require('../../core/query');
 const { rateLimit } = require('../../middleware/rateLimit');
+const settings = require('../../core/settings');
 
 const router = express.Router();
 
 // 公开查询接口：限制频率，防止被脚本反复试探
 const queryLimiter = rateLimit({ windowMs: 60_000, max: 60, message: '查询过于频繁，请稍后再试' });
 
-/** 公开配置：仅暴露版本号等无敏感信息 */
+/** 公开配置：仅暴露版本号与「成绩自助查询总开关」状态（供登录页决定要不要显示入口） */
 router.get(
   '/settings',
   asyncHandler(async (req, res) => {
-    res.json({ version: config.version });
+    res.json({
+      version: config.version,
+      publicQueryEnabled: settings.getBool('public_query_enabled', true),
+    });
   })
 );
 

@@ -54,6 +54,8 @@ const config = {
   jwtSecret,
   accessTokenTtl: toInt('ACCESS_TOKEN_TTL', 1800, 60, 86400),
   refreshTokenTtl: toInt('REFRESH_TOKEN_TTL', 1209600, 3600, 60 * 60 * 24 * 90),
+  // 登录接口防爆破限流（每 IP 5 分钟上限，可配置；测试环境调高避免单 IP 批量登录触发）
+  authLoginRateMax: toInt('AUTH_LOGIN_RATE_MAX', 30, 1, 100000),
   corsOrigin: (process.env.CORS_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean),
   dbFile: resolvePath(required('DB_FILE', 'data/banjifen.sqlite')),
   uploadDir: resolvePath(required('UPLOAD_DIR', 'data/uploads')),

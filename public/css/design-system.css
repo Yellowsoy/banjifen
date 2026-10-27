@@ -1210,3 +1210,57 @@ tr.log-row { cursor: pointer; }
     scroll-behavior: auto !important;
   }
 }
+
+/* ============ 成绩自助查询总开关 ============ */
+.switch-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  background: var(--c-bg-soft, #f5f7fb);
+  border: 1px solid var(--c-border, #e7ebf2);
+  border-radius: var(--radius-card, 18px);
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 30px;
+  cursor: pointer;
+}
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.switch .slider {
+  position: absolute;
+  inset: 0;
+  background: #c7cedb;
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+.switch .slider::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.25);
+  transition: transform 0.2s ease;
+}
+.switch input:checked + .slider {
+  background: var(--c-primary-500, #3B6FF5);
+}
+.switch input:checked + .slider::before {
+  transform: translateX(22px);
+}
+.switch input:focus-visible + .slider {
+  outline: 2px solid var(--c-primary-600, #2f5bd0);
+  outline-offset: 2px;
+}

@@ -82,7 +82,6 @@ export function confirmDialog({ title = '确认操作', message = '', okText = '
           resolve(true);
         };
       },
-      mask,
     });
     return mask;
   });

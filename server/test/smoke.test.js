@@ -110,7 +110,7 @@ async function login(client, username, password, entry = 'class') {
 
 async function main() {
   server = spawn(process.execPath, [path.join(__dirname, '../src/index.js')], {
-    env: { ...process.env, PORT: String(PORT), DB_FILE, NODE_ENV: 'test', JWT_SECRET: 'test-secret-should-be-long-enough-32' },
+    env: { ...process.env, PORT: String(PORT), DB_FILE, NODE_ENV: 'test', JWT_SECRET: 'test-secret-should-be-long-enough-32', AUTH_LOGIN_RATE_MAX: '2000' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   server.stdout.on('data', () => {});
@@ -744,6 +744,55 @@ async function main() {
       studentNo: 'SN-001',
     });
     assert.equal(res.status, 400);
+  });
+
+  await ok('成绩自助查询总开关：默认开启，公开设置可读取', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const set = (await superC.get('/api/super/settings/public-query')).data;
+    assert.equal(set.enabled, true, '默认应为开启');
+    const pub = new Client();
+    const ps = (await pub.get('/api/public/settings')).data;
+    assert.equal(ps.publicQueryEnabled, true, '公开设置应暴露总开关状态');
+  });
+
+  await ok('超管可关闭总开关，关闭后公开查询被拦截且公开设置同步', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    const list = (await superC.get('/api/super/classes?pageSize=50')).data;
+    const target = list.items.find((c) => c.name === '备份恢复班') || list.items.filter((c) => (c.studentCount || 0) > 0)[0];
+    assert.ok(target, '应至少有一个班级用于生成测试口令');
+    const tk = (await superC.post('/api/super/query-tokens', { classId: target.id, scope: 'all', mode: 'name_no', name: '总开关验证' })).data;
+    assert.ok(tk.token, '应生成测试口令');
+    // 关闭总开关
+    const off = (await superC.post('/api/super/settings/public-query', { enabled: false })).data;
+    assert.equal(off.enabled, false, '应返回关闭状态');
+    // 公开设置应同步为关闭
+    const pub = new Client();
+    assert.equal((await pub.get('/api/public/settings')).data.publicQueryEnabled, false, '公开设置应同步为关闭');
+    // 公开查询（探测与提交）均应被拒绝
+    const infoRes = await pub.get(`/api/public/query/${tk.token}`);
+    assert.equal(infoRes.status, 400, '关闭后 info 应被拒绝');
+    const qRes = await pub.post(`/api/public/query/${tk.token}`, { name: '档案测试', studentNo: 'SN-001' });
+    assert.equal(qRes.status, 400, '关闭后查询应被拒绝');
+    assert.ok(String((qRes.data && qRes.data.error && qRes.data.error.message) || '').includes('关闭'), '应给出已关闭提示');
+    globalThis.__switchToken = tk.token;
+    globalThis.__switchTokenId = tk.id;
+  });
+
+  await ok('重新开启总开关后，公开查询恢复正常', async () => {
+    const superC = new Client();
+    await login(superC, 'admin', 'admin123456', 'super');
+    await superC.post('/api/super/settings/public-query', { enabled: true });
+    const pub = new Client();
+    assert.equal((await pub.get('/api/public/settings')).data.publicQueryEnabled, true, '应恢复为开启');
+    const tk = (await superC.get('/api/super/query-tokens')).data.items.find((t) => t.token === globalThis.__switchToken);
+    assert.ok(tk, '应找到总开关验证口令');
+    const qRes = await pub.post(`/api/public/query/${tk.token}`, { name: '档案测试', studentNo: 'SN-001' });
+    assert.equal(qRes.status, 200, JSON.stringify(qRes.data));
+    assert.equal(qRes.data.student.name, '档案测试');
+    // 清理：删除测试口令，确保默认开启不被遗留
+    await superC.del(`/api/super/query-tokens/${globalThis.__switchTokenId}`);
   });
 
   await ok('失败操作也被记录，可按结果筛选（便于追溯）', async () => {

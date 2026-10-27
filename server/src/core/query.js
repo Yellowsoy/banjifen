@@ -12,6 +12,14 @@
 const db = require('../db');
 const { NotFoundError, BusinessError, BusinessError: BadRequestError } = require('./errors');
 const { record } = require('./audit');
+const settings = require('./settings');
+
+/** 全局总开关：关闭后公开查询页与接口一律不可用（教师端工作台不受影响） */
+function assertFeatureEnabled() {
+  if (!settings.getBool('public_query_enabled', true)) {
+    throw new BusinessError('成绩自助查询功能已暂时关闭，如有疑问请联系学校管理员');
+  }
+}
 
 const MODE_LABEL = {
   name_no: '学号 + 姓名',
@@ -153,6 +161,7 @@ function buildResult({ row, cls }, student, req) {
 }
 
 function query(token, payload, req) {
+  assertFeatureEnabled();
   const ctx = findToken(token);
   const student = locateStudent(ctx.cls.id, ctx.row.mode, payload);
   return buildResult(ctx, student, req);
@@ -160,6 +169,7 @@ function query(token, payload, req) {
 
 /** 公开元信息：先告诉前端这个口令需要哪些输入项，无需先提交 */
 function info(token) {
+  assertFeatureEnabled();
   const { row, cls } = findToken(token);
   return {
     className: cls.name,

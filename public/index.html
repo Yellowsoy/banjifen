@@ -433,6 +433,17 @@
 
   <!-- ============ 成绩对外查询 ============ -->
   <div class="card hidden" id="superQueryPanel" style="margin-bottom:16px">
+    <div class="switch-card" style="margin-bottom:14px">
+      <div class="grow">
+        <div class="card-title" style="margin-bottom:2px">成绩自助查询 · 总开关</div>
+        <div class="tiny muted">关闭后：登录页不再显示查询入口，家长公开查询页也无法访问；教师端与班级工作台完全不受影响。各班级的口令本身仍保留，重新开启即可恢复。</div>
+      </div>
+      <label class="switch" title="超级查询总开关">
+        <input type="checkbox" id="publicQueryToggle" />
+        <span class="slider"></span>
+      </label>
+    </div>
+
     <div class="card-title" style="margin-bottom:10px">生成对外查询口令</div>
     <div class="row wrap" style="margin-bottom:8px">
       <select id="qtClass" class="select grow" style="min-width:180px"><option value="">选择班级</option></select>

@@ -226,4 +226,17 @@ router.delete(
   controller.queryTokenDelete
 );
 
+/* ==================== 成绩自助查询总开关 ==================== */
+router.get('/settings/public-query', controller.getPublicQuerySetting);
+router.post(
+  '/settings/public-query',
+  trail({
+    module: 'super',
+    action: 'settings.publicQuery',
+    targetType: 'platform',
+    summary: ({ body }) => `将「成绩自助查询」总开关置为${body && body.enabled ? '开启' : '关闭'}`,
+  }),
+  controller.setPublicQuerySetting
+);
+
 module.exports = router;

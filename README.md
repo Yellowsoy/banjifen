@@ -77,7 +77,7 @@ v2.1 新增三大能力：
 - 操作日志：建班/建号/改密/转移/删除/恢复全部可追溯
 - **全量操作日志**：全部角色、全部模块（班级业务 / 成员 / 超管 / 登录 / 备份 / 对外查询）的每一步写操作，含操作者、角色、班级、目标、摘要、数量、成功或失败、状态码、IP、UA；编辑类操作记录**变更前后快照与字段级 diff**（点任意一行查看详情）；支持按时间 / 班级 / 角色 / 模块 / 结果 / 关键词筛选，导出 CSV，一键清理 N 天前旧日志
 - **数据备份**：班级备份（班级资料 + 成员 + 学生档案 + 积分 + 规则 + 礼物 + 兑换 + 考试成绩 + 座位表）、平台全量备份（全部班级 + 全部账号 + 回收站 + 最近 2 万条日志）；上传 JSON 一键恢复为新班级或覆盖现有班级，失败整体回滚；**备份不含任何密码散列**
-- **成绩对外查询**：为班级生成查询口令（可设有效期、可随时停用），家长打开 `/query.html` 输入口令 + 姓名学号即可免登录查看本人成绩、班均、最高分、班排与积分排名；一个口令只能查到命中的一名学生，家长手机号脱敏展示，失败尝试全部记入操作日志
+- **成绩对外查询**：为班级生成查询口令（可设有效期、可随时停用），家长打开 `/query.html` 输入口令 + 姓名学号即可免登录查看本人成绩、班均、最高分、班排与积分排名；一个口令只能查到命中的一名学生，家长手机号脱敏展示，失败尝试全部记入操作日志；另设**全局总开关**，超管可一键关闭（登录页入口隐藏、公开查询页不可访问），教师端完全不受影响
 
 ---
 
@@ -100,6 +100,7 @@ v2.1 新增三大能力：
 
 ### 成绩对外查询（超级管理员 → 成绩查询页签）
 
+0. **总开关**：页签顶部「成绩自助查询 · 总开关」，默认**开启**。关闭后：登录页不再显示查询入口、家长公开查询页也无法访问（接口返回「功能已关闭」）；教师端与班级工作台完全不受影响，已生成的口令原样保留，重新开启即恢复。
 1. 选择班级、填写用途备注、选查询范围（仅成绩 / 仅积分 / 成绩+积分）与校验方式（姓名+学号 / 姓名+家长手机后 4 位 / 仅姓名）、有效期 → 「生成口令」。
 2. 弹窗里复制**查询入口链接**（`https://你的域名/query.html?token=口令`）发给家长。
 3. 家长打开链接，输入学生姓名 + 学号（或手机尾号）即可看到本人成绩、班排、班均、积分与排名，全程免登录。
@@ -202,7 +203,7 @@ node scripts/seed-demo.js
 │  │     ├─ members/           # 班主任管理本班成员
 │  │     ├─ super/             # 超管：班级、账号、归属、回收站、审计
 │  │     └─ public/            # 版本号、健康检查
-│  └─ test/smoke.test.js       # 69 项集成测试
+│  └─ test/smoke.test.js       # 74 项集成测试
 ├─ public/
 │  ├─ index.html               # 班级工作台
 │  ├─ login.html               # 独立登录页
@@ -238,7 +239,7 @@ node scripts/seed-demo.js
 | 超管 | `GET /super/overview`、`GET\|POST /super/classes`、`PATCH\|DELETE /super/classes/:id`、`POST /super/classes/:id/restore\|transfer-owner`、`GET /super/classes/export.csv`、`GET\|POST /super/accounts`、`PATCH\|DELETE /super/accounts/:id`、`POST /super/accounts/:id/reset-password`、`GET /super/recycle`、`POST /super/recycle/:id/restore`、`GET /super/audit` |
 | 操作日志 | `GET /super/logs`（时间/班级/角色/模块/结果/关键词筛选）、`GET /super/logs/export.csv`、`POST /super/logs/clear` |
 | 备份 | `GET /super/backup/class/:id`、`GET /super/backup/platform`、`POST /super/backup/import`（multipart `file` 或 `text`，`mode=create\|replace`） |
-| 对外查询 | `GET\|POST /super/query-tokens`（生成 / 列表）、`PATCH\|DELETE /super/query-tokens/:id`（启停 / 删除）、`GET\|POST /public/query/:token`（免登录，限流 60 次/分） |
+| 对外查询 | `GET\|POST /super/query-tokens`（生成 / 列表）、`PATCH\|DELETE /super/query-tokens/:id`（启停 / 删除）、`GET\|POST /public/query/:token`（免登录，限流 60 次/分）、`GET\|POST /super/settings/public-query`（查询总开关，默认开启） |
 | 学生档案 | `GET /class/students/export.xlsx`（档案三 Sheet 导出）；`POST\|PATCH /class/students` 支持 `studentNo/birthday/address/guardianName/guardianPhone/guardianRelation/guardianAltPhone/note` |
 | 公开 | `GET /public/settings`、`GET /health`、`GET /ready` |
 
@@ -260,6 +261,7 @@ node scripts/seed-demo.js
 | `admin_audit` | 超管操作审计（旧表，与 operation_logs 双写） |
 | `operation_logs` | **全量操作日志**：操作者（id/姓名/角色）、班级、模块、动作、目标、摘要、数量、成败、状态码、detail（含 BEFORE/AFTER 快照）、IP、UA |
 | `query_tokens` | **对外查询口令**：班级、口令（唯一）、范围、校验方式、启停、有效期、创建人、最近使用时间 |
+| `platform_settings` | **全局平台设置**（键值对）：如 `public_query_enabled`（成绩自助查询总开关，缺省开启） |
 
 所有业务查询以 `class_id` 为边界（来自登录态，不接受前端传入）；越权访问统一 403/404。
 
@@ -315,7 +317,7 @@ npm test
 - 安全：CSRF、422、越权 404、登出失效、刷新令牌
 
 ```
-结果：通过 69，失败 0
+结果：通过 74，失败 0
 ```
 
 ---
@@ -380,7 +382,7 @@ server {
 - **隐私**：手机号仅超管见全量，班主任见脱敏值；日志脱敏敏感字段
 - **限流**：登录 5 分钟 30 次（内存窗口，多实例建议换 Redis）
 - **审计**：全站写操作统一经 `trail()` 中间件落 `operation_logs`（含失败请求），敏感字段（密码/令牌）自动脱敏，编辑操作留前后快照
-- **对外查询**：公开接口仅暴露命中学生的本人数据，家长手机号一律脱敏，口令可随时吊销，限流 60 次/分
+- **对外查询**：公开接口仅暴露命中学生的本人数据，家长手机号一律脱敏，口令可随时吊销，限流 60 次/分；另有全局总开关，关闭后公开查询接口直接拒绝（默认开启）
 - **数据**：多步写入事务；SQLite 以临时文件 + rename 原子落盘，退出前 flush
 
 ---

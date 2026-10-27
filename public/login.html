@@ -44,7 +44,7 @@
         忘记密码请联系本班班主任或超级管理员重置
       </div>
 
-      <div class="tips-box">
+      <div class="tips-box" id="queryEntryBox">
         家长查成绩不需要登录 ·
         <a href="/query.html" style="color:var(--c-primary-600);font-weight:800">成绩自助查询入口</a>
       </div>
@@ -149,6 +149,19 @@
     });
     document.getElementById('loginUser').focus();
   });
+
+  /** 根据全局开关决定是否在登录页展示「成绩自助查询入口」（关闭后隐藏，不影响教师端） */
+  (async () => {
+    try {
+      const data = await api('/public/settings');
+      if (data && data.publicQueryEnabled === false) {
+        const box = document.getElementById('queryEntryBox');
+        if (box) box.style.display = 'none';
+      }
+    } catch {
+      /* 取不到开关时默认展示，保证入口可用 */
+    }
+  })();
 </script>
 
 </body>

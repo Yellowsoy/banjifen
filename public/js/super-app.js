@@ -598,6 +598,17 @@ async function runImportBackup() {
 const SCOPE_LABEL = { scores: '仅成绩', points: '仅积分', all: '成绩 + 积分' };
 const MODE_LABEL = { name_no: '姓名 + 学号', phone: '姓名 + 家长手机后 4 位', none: '仅姓名' };
 
+/** 成绩自助查询总开关：读取并反映到 UI，避免与单次「开/关某个口令」混淆 */
+async function loadPublicQuerySetting() {
+  try {
+    const data = await api.get('/super/settings/public-query');
+    const t = $('#publicQueryToggle');
+    if (t) t.checked = !!data.enabled;
+  } catch {
+    /* 忽略，开关默认不勾选即可 */
+  }
+}
+
 async function loadQueryTokens() {
   const data = await api.get('/super/query-tokens');
   const items = data.items || [];
@@ -688,7 +699,10 @@ export async function mountSuperApp({ logout }) {
     $('#superQueryPanel').classList.toggle('hidden', view.tab !== 'query');
     $('#recycleCard').classList.toggle('hidden', view.tab !== 'classes');
     if (view.tab === 'logs') loadLogs();
-    if (view.tab === 'query') loadQueryTokens();
+    if (view.tab === 'query') {
+      loadQueryTokens();
+      loadPublicQuerySetting();
+    }
     if (view.tab === 'backup') syncClassSelects();
   });
 
@@ -797,6 +811,29 @@ export async function mountSuperApp({ logout }) {
 
   /* ---------- 成绩对外查询口令 ---------- */
   $('#btnQtRefresh').onclick = loadQueryTokens;
+  $('#publicQueryToggle').onchange = async (e) => {
+    const enabled = e.target.checked;
+    const ok = await confirmDialog({
+      title: enabled ? '开启成绩自助查询' : '关闭成绩自助查询',
+      message: enabled
+        ? '开启后，登录页会重新显示查询入口，家长可凭口令自助查成绩。'
+        : '关闭后，登录页将不再显示查询入口，家长公开查询页也无法访问；教师端与班级工作台完全不受影响。各口令仍保留，重新开启即可恢复。',
+      okText: enabled ? '开启' : '确认关闭',
+      danger: !enabled,
+    });
+    if (!ok) {
+      e.target.checked = !enabled; // 用户取消，恢复开关原状态
+      return;
+    }
+    try {
+      await api.post('/super/settings/public-query', { enabled });
+      toast(enabled ? '已开启成绩自助查询' : '已关闭成绩自助查询', 'ok');
+      await loadLogs();
+    } catch (err) {
+      e.target.checked = !enabled;
+      toast(err.message, 'err');
+    }
+  };
   $('#btnQtCreate').onclick = async () => {
     const classId = $('#qtClass').value;
     if (!classId) return toast('请先选择班级', 'err');

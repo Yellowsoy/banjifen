@@ -238,6 +238,16 @@ const queryTokenDelete = asyncHandler(async (req, res) => {
   res.json(service.deleteQueryToken(req.auth, req.params.id));
 });
 
+/* ---- 成绩自助查询总开关 ---- */
+const getPublicQuerySetting = asyncHandler(async (req, res) => {
+  res.json({ enabled: service.getPublicQueryEnabled() });
+});
+
+const setPublicQuerySetting = asyncHandler(async (req, res) => {
+  const body = parse(z.object({ enabled: z.coerce.boolean() }), req.body);
+  res.json({ enabled: service.setPublicQueryEnabled(req.auth, body.enabled) });
+});
+
 const deletedClasses = asyncHandler(async (req, res) => {
   res.json(service.deletedClasses());
 });
@@ -280,4 +290,7 @@ module.exports = {
   queryTokenCreate,
   queryTokenToggle,
   queryTokenDelete,
+  // 成绩自助查询总开关
+  getPublicQuerySetting,
+  setPublicQuerySetting,
 };

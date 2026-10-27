@@ -9,6 +9,7 @@ const { toCsv } = require('../../core/excel');
 const repo = require('./super.repository');
 const authRepo = require('../auth/auth.repository');
 const opAudit = require('../../core/audit');
+const settings = require('../../core/settings');
 
 /**
  * 超级管理员操作留痕：
@@ -398,6 +399,18 @@ function deleteQueryToken(actor, id) {
   return { ok: true };
 }
 
+/* ==================== 成绩自助查询总开关 ==================== */
+
+function getPublicQueryEnabled() {
+  return settings.getBool('public_query_enabled', true);
+}
+
+function setPublicQueryEnabled(actor, enabled) {
+  settings.set('public_query_enabled', enabled ? '1' : '0', actor.accountId);
+  audit(actor, 'settings.publicQuery', 'platform', '', `将「成绩自助查询」总开关置为${enabled ? '开启' : '关闭'}`);
+  return getPublicQueryEnabled();
+}
+
 module.exports = {
   overview,
   listClasses,
@@ -427,4 +440,6 @@ module.exports = {
   createQueryToken,
   toggleQueryToken,
   deleteQueryToken,
+  getPublicQueryEnabled,
+  setPublicQueryEnabled,
 };
