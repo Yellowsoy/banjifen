@@ -10,25 +10,95 @@ v2.1 新增三大能力：
 
 整套系统可完全私有部署：一个 Node.js 进程 + 一个 SQLite 文件，无需任何第三方云服务；线上版本托管在 EdgeOne Pages（静态前端 + Node 云函数 + Blob 数据存储），域名 <https://bj.5166966.xyz>。
 
-<p>
-<img src="docs/screenshots/02-ranking.png" width="240" alt="学生榜" />
-<img src="docs/screenshots/07-scores.png" width="240" alt="成绩分析" />
-<img src="docs/screenshots/09-members.png" width="240" alt="成员管理" />
-</p>
-<p>
-<img src="docs/screenshots/05-seating.png" width="240" alt="积分排座" />
-<img src="docs/screenshots/06-mall.png" width="240" alt="积分商城" />
-<img src="docs/screenshots/11-cadre-view.png" width="240" alt="班干部视图" />
-</p>
-<p>
-<img src="docs/screenshots/12-super-classes.png" width="640" alt="超级管理员 · 班级" />
-</p>
-
 > 以上截图使用 **虚构演示数据**（示例学校、化名学生、138xxxx 测试手机号），由仓库内 `scripts/seed-demo.js` 生成，可复现。
 
 ---
 
-## 特性
+## 目录
+
+- [项目架构总览](#项目架构总览)
+- [核心特性](#核心特性)
+- [重要操作方法（速查）](#重要操作方法速查)
+- [技术栈](#技术栈)
+- [后端服务与数据库说明](#后端服务与数据库说明)
+- [存储位置与访问方式](#存储位置与访问方式)
+- [数据结构说明](#数据结构说明)
+- [界面规范（视觉对齐）](#界面规范视觉对齐)
+- [成绩「学习建议」是怎么算的](#成绩学习建议是怎么算的)
+- [测试](#测试)
+- [部署](#部署)
+- [注意事项与常见问题](#注意事项与常见问题)
+- [安全设计](#安全设计)
+- [说明](#说明)
+
+---
+
+## 项目架构总览
+
+### 整体分层
+
+系统由「**静态前端** + **Node 后端 API** + **SQLite 数据库**」三层组成，前后端完全分离，所有交互走 `/api/*` 接口，鉴权基于 httpOnly Cookie（前端拿不到令牌）。
+
+```
+┌──────────────────────── 浏览器（public/） ────────────────────────┐
+│  index.html / login.html / settings.html / query.html            │
+│  css/design-system.css（设计系统 v2）                              │
+│  js/api.js（fetch 封装 + CSRF 头 + 401 自动刷新重试 + 文件下载）    │
+│  js/{ui,store,app}.js + 各业务模块 app.js                          │
+└──────────────────────────────┬───────────────────────────────────┘
+                               │  /api/*（httpOnly Cookie + x-requested-with: fetch）
+┌──────────────────────────────▼───────────────────────────────────┐
+│ Express 5（server/src）                                            │
+│  中间件：context(requestId/日志) → 安全头 → auth(requireCap)        │
+│        → audit-trail(trail) → 错误处理                            │
+│  模块 modules/：                                                   │
+│    auth     登录/刷新/登出/改密                                    │
+│    class    学生/积分/规则/商城/排座/成绩（班主任+老师+班干部）     │
+│    members  班主任管理本班成员                                      │
+│    super    超管：班级/账号/归属/回收站/审计/日志/备份/查询         │
+│    public   版本号/健康检查                                        │
+│  分层：routes（路由+参数）→ controller（解析/响应）                 │
+│       → service（业务+事务）→ repository（SQL）                    │
+└──────────────────────────────┬───────────────────────────────────┘
+                               │
+              SQLite（sql.js 内存库 + 原子落盘 / EdgeOne Blob 快照）
+```
+
+### 后端分层约定
+
+每个业务模块内部遵循严格的四层职责分离，避免「在路由里写 SQL、在控制器里写业务」：
+
+| 层 | 文件 | 职责 |
+| --- | --- | --- |
+| **routes** | `*.routes.js` | 只声明路径、HTTP 方法、挂载 `requireAuth/requireCap` 能力校验、挂 `trail()` 审计；不做业务 |
+| **controller** | `*.controller.js` | 解析请求体/参数、调用 service、组织响应；做入参结构校验（zod） |
+| **service** | `*.service.js` | 业务逻辑、事务边界、归属校验（`class_id` 来自登录态，不接受前端传入）、调用 repository |
+| **repository** | `*.repository.js` | 纯 SQL 读写，全部使用参数化查询 |
+
+> `members` 模块未单独拆 repository（业务较薄，service 直接调 db）；`public` 模块只含 routes，无业务逻辑。
+
+### 中间件链与请求生命周期
+
+一个写请求的完整链路（以「班主任给某学生加 2 分」为例）：
+
+1. **安全头中间件**：注入 `X-Content-Type-Options / X-Frame-Options / CSP / HSTS(prod)`；
+2. **context**：生成 `requestId`，挂到 `req.ctx`，结构化日志全链路可追踪；
+3. **静态资源 / 路由分发**：`/api/*` 进入 Express 路由；
+4. **auth 中间件**：`requireAuth('owner')` → 校验 CSRF 头（`x-requested-with: fetch`）→ 读 Cookie 里的访问令牌 → 还原登录态（`accountId/role/classId`）→ 非 GET 一律校验 CSRF；
+5. **service + repository**：在事务内完成「插入 point_logs + 更新 students.points」；
+6. **audit-trail**：`trail()` 把本次写操作的摘要、操作人、班级、成功/失败、IP、UA、上下文写入 `operation_logs`（失败请求也记）；
+7. **error**：统一错误响应 `{ error: { code, message }, requestId }`，不泄露堆栈；
+8. **落盘**：写操作触发 `db` 标记 dirty，本地模式 60ms 防抖后原子落盘，EdgeOne 模式在响应结束后异步序列化写入 Blob。
+
+### 模块与能力边界
+
+- **权限单一来源**：角色 × 能力矩阵集中在 `server/src/core/policy.js`（`ROLE` 枚举 + `can(role, capability)`）。路由只声明「需要什么能力」，如 `requireCap('student:delete')`；服务层再用登录态里的 `class_id` 校验数据归属。权限**不是前端藏按钮**，后端强制。
+- **超管独立命名空间**：超管接口统一在 `/api/super/*`，与班级业务隔离，且超管自身不带 `class_id`，不能越界改教学数据。
+- **公开查询免登录**：家长页面 `/query.html` 走 `/api/public/query/:token`，不受 auth 中间件约束，但受限流与「仅暴露命中学生本人数据」约束。
+
+---
+
+## 核心特性
 
 ### 四级角色，边界清晰
 
@@ -47,11 +117,9 @@ v2.1 新增三大能力：
 
 设计要点：
 
-1. **超管不碰业务数据**——只负责建班、建号、改归属、重置密码、看手机号，避免平台方误改教学数据；超管动作全部落 `admin_audit`。
+1. **超管不碰业务数据**——只负责建班、建号、改归属、重置密码、看手机号，避免平台方误改教学数据；超管动作全部落 `admin_audit` / `operation_logs`。
 2. **删除权只给班主任**——老师能日常操作但删不了学生、清不了数据；所有"清空"先写回收站快照，超管可一键还原。
 3. **班干部限额是硬约束**——防止学生互刷分，每次操作在流水里记 `operator_name / operator_role`，谁加的一目了然。
-
-权限不是前端藏按钮：能力表在 `server/src/core/policy.js`，路由用 `requireCap('student:delete')` 声明，服务层再用登录态里的 `class_id` 校验归属。
 
 ### 班级端
 
@@ -119,157 +187,122 @@ v2.1 新增三大能力：
 
 | 层 | 选型 | 说明 |
 | --- | --- | --- |
-| 运行时 | Node.js 18+ | 无构建步骤，开箱即跑 |
-| Web | Express 5 | 分层：routes → controller → service → repository |
-| 数据 | SQLite（[sql.js](https://sql.js.org/) WASM） | 纯 JS，无需编译原生模块，Windows/macOS/Linux 一致 |
+| 运行时 | Node.js 18.17+ | 无构建步骤（前端），后端单进程即可跑 |
+| Web 框架 | Express 5 | 分层：routes → controller → service → repository |
+| 数据库 | SQLite（[sql.js](https://sql.js.org/) WASM） | 纯 JS WebAssembly 实现，无需编译原生模块，Windows/macOS/Linux 一致；整库载入内存、写后原子落盘 |
+| 持久化驱动 | 本地文件 / EdgeOne Pages Blob | `EO_PERSIST=blob` 时切换为云端对象存储快照 |
 | 鉴权 | JWT + 服务端刷新令牌 | httpOnly Cookie，刷新即轮换，前端拿不到令牌 |
 | 校验 | Zod | 所有入参在边界处收敛 |
 | 前端 | 原生 ES Module + 手写 CSS | 无框架、无打包器，`public/` 直接托管 |
 | 导出 | SheetJS（xlsx） | 花名册/成绩导入，CSV 导出带 BOM |
-
-```
-┌────────────────────────── 浏览器（public/） ──────────────────────────┐
-│  index.html  ·  app.css（设计系统）  ·  js/{api,ui,store,...}.js       │
-│  api.js：fetch 封装 + CSRF 头 + 401 自动刷新重试 + 文件下载             │
-└──────────────────────────────┬───────────────────────────────────────┘
-                               │  /api/*（httpOnly Cookie）
-┌──────────────────────────────▼───────────────────────────────────────┐
-│ Express 5                                                            │
-│  middleware: requestContext(requestId/日志) → auth(requireCap) → 错误  │
-│  modules: auth · class · members · super · public                    │
-│    controller（解析/响应） → service（业务+事务） → repository（SQL）    │
-└──────────────────────────────┬───────────────────────────────────────┘
-                               │
-                    SQLite（data/banjifen.sqlite，原子落盘）
-```
+| 云函数 | EdgeOne Pages Functions | `/api/*` 路由到 `cloud-functions/api/[[default]].js` |
 
 ---
 
-## 快速开始
+## 后端服务与数据库说明
 
-```bash
-npm install
-cp .env.example .env      # 默认值即可本地跑通
-npm start                 # → http://localhost:3000
+### 启动流程
+
+```
+server/src/index.js → main()
+  1. 读取并校验配置（config.js 失败即退出，fail fast）
+  2. db.init()：加载/创建 SQLite 内存库 → 执行迁移 → 结构自检
+  3. runSeed()：首次启动写入种子账号与演示班级（已存在则跳过）
+  4. createApp()：装配中间件与路由
+  5. app.listen(port)：启动 HTTP，注册 SIGINT/SIGTERM 优雅停机（先 flush 再关库）
 ```
 
-Windows 可直接双击 `start.bat`，macOS/Linux 用 `./start.sh`。
+- 本地/自有服务器：`npm start` 直接启动 `server/src/index.js`，数据落本地文件。
+- EdgeOne 云函数：平台先加载 `cloud-functions/api/[[default]].js`，其第一个 import 是 `server/src/edge-env.js`（强制把 `EO_PERSIST` 设为 `blob`、`NODE_ENV` 设为 `production`），随后 `edge-entry.js` 的 `createEdgeApp()` 在首个请求（`gate` 中间件）里异步完成数据库引导，并把响应结束后的持久化挂在 `res.on('finish')` 上，避免阻塞响应。
 
-首次启动自动建表并写入演示数据：
+### 数据访问层（DAL）
 
-| 角色 | 账号 | 密码 |
+`server/src/db/index.js` 是所有 SQL 的唯一出入口：
+
+- **参数化查询**：对外只暴露 `all / get / run / exec / count`，全部使用 `stmt.bind(params)`，杜绝 SQL 注入。
+- **事务**：`transaction(fn)` 支持嵌套（内层复用外层事务），`BEGIN IMMEDIATE` 开头、成功 `COMMIT`、异常 `ROLLBACK`，保证多步写入要么全成要么全回滚（如「加积分」= 插入流水 + 更新学生积分）。
+- **内存库 + 原子落盘**：sql.js 是「内存数据库」，所有读写在内存完成。`run/exec` 会标记 `dirty`，本地模式 **60ms 防抖**后把整库字节 `export()`，先写 `.tmp` 再 `rename` 原子替换 `data/banjifen.sqlite`，避免半份文件。
+- **自检与迁移**：`applyMigrations()` 读取 `schema_migrations` 表，按文件名排序补齐未执行的迁移；`assertSchema()` 拦截 v1（无 `class_id/role`）旧数据文件，避免以错误结构运行。
+
+### 迁移机制
+
+- 迁移源文件位于 `server/src/db/migrations/*.sql`，编号递增：`001_init.sql`（核心表）、`002_features.sql`（学生档案 / 操作日志 / 查询口令）、`003_settings.sql`（平台设置）。
+- 迁移**只做加法**（新增列 / 新表，带 `IF NOT EXISTS` / `ADD COLUMN`），可安全重复执行，不会破坏已有数据。
+- 构建 EdgeOne 产物时，`scripts/gen-inline.js` 会把全部 `.sql` **内联**成 `server/src/db/migrations.generated.js`，再把 sql.js 的 wasm 二进制 base64 内联成 `server/src/db/sql-wasm.b64.js`——因为云函数环境读不到 `node_modules` 里的物理文件。因此**改完迁移 SQL 后必须重跑 `npm run build:edgeone`** 才能让线上生效。
+
+---
+
+## 存储位置与访问方式
+
+### 本地 / 自有服务器（fs 模式）
+
+| 内容 | 路径 / 位置 | 访问方式 |
 | --- | --- | --- |
-| 超级管理员 | `admin` | `admin123456` |
-| 班主任 | `123456` | `123456` |
-| 老师 | `teacher` | `123456` |
-| 班干部 | `cadre` | `123456` |
+| 主数据库（SQLite 文件） | `data/banjifen.sqlite`（相对仓库根，受 `DB_FILE` 控制） | 由后端 sql.js 载入内存，写后原子落盘；可用 `sqlite3 data/banjifen.sqlite` 直接打开查看 |
+| 临时落盘文件 | `data/banjifen.sqlite.tmp`（写入瞬间存在，随即 rename） | 自动生成/删除，无需关注 |
+| 上传临时目录 | `data/uploads/`（受 `UPLOAD_DIR` 控制，备份导入文件暂存） | 由 `multer` 写入，经 `/uploads` 静态路由按 7 天缓存对外提供 |
+| 备份导出文件 | 用户浏览器下载（内存生成 JSON，不落服务器） | 教师/超管在前端点「导出」直接下载 |
+| 配置文件 | `.env`（从 `.env.example` 复制） | 服务端读取，`gitignore` 忽略，绝不入仓 |
+| 内联构建产物 | `server/src/db/migrations.generated.js`、`sql-wasm.b64.js` | 由 `gen-inline.js` 生成，提交进仓库供云函数打包 |
 
-生成更完整的演示数据（12 名学生、58 条流水、两场考试、排座、兑换记录，用于复现 README 截图）：
+> `data/` 下所有内容（`.sqlite`、`.sqlite.tmp`、`uploads/`）均已被 `.gitignore` 忽略，**不会进入 GitHub 仓库**，避免泄露真实业务数据。
 
-```bash
-npm start                    # 另开一个终端
-node scripts/seed-demo.js
-```
+### EdgeOne Pages（blob 模式，线上）
 
-> 生产环境请修改 `.env` 中的 `JWT_SECRET`、`SUPER_PASSWORD`，并在首次登录后立即改密码。
-> 本版数据结构（v2，含角色与班级归属）与早期"一个账号即一个班级"的结构不兼容，旧 `data/banjifen.sqlite` 需删除重建，启动时会明确提示。
+`EO_PERSIST=blob` 时，本地文件系统只读，**整库作为快照写入 EdgeOne Pages Blob 对象存储**（强一致读 `consistency: 'strong'`）：
 
----
+| 内容 | Blob Key | 说明 |
+| --- | --- | --- |
+| 数据库快照 | `bj/db/snapshot` | 整库 SQLite 字节流，每次写后更新 |
+| 快照版本号 / 时间 | `bj/db/meta`（`{ v, at }`） | 多实例据此判断谁更新，避免读到陈旧数据 |
+| JWT 签名密钥 | `bj/config/jwt-secret` | 冷启动/多实例间共享同一把密钥，保证令牌可跨实例验证（首次随机生成并落盘） |
 
-## 目录结构
+访问方式：
 
-```
-.
-├─ server/
-│  ├─ src/
-│  │  ├─ index.js              # 启动：初始化 DB → 种子 → 监听 → 优雅停机
-│  │  ├─ app.js                # 安全头、请求上下文、路由、错误处理
-│  │  ├─ config.js             # 环境变量集中校验（缺失/非法即启动失败）
-│  │  ├─ seed.js               # 种子：超管 + 演示班级 + 三种角色账号
-│  │  ├─ core/
-│  │  │  ├─ policy.js          # ★ 权限单一来源：角色 × 能力矩阵
-│  │  │  ├─ errors.js          # 类型化错误体系
-│  │  │  ├─ logger.js          # 结构化 JSON 日志（敏感字段脱敏）
-│  │  │  ├─ security.js        # bcrypt / JWT / Cookie / 随机令牌
-│  │  │  ├─ validation.js      # zod schema 集合
-│  │  │  └─ excel.js           # xlsx 读写、CSV(BOM)、表头容错
-│  │  ├─ db/
-│  │  │  ├─ index.js           # sql.js 连接、事务、原子落盘、迁移、旧库自检
-│  │  │  └─ migrations/001_init.sql
-│  │  ├─ middleware/           # requestContext · auth · error · rateLimit
-│  │  └─ modules/
-│  │     ├─ auth/              # 双入口登录、刷新、改密
-│  │     ├─ class/             # 学生、积分、规则、商城、排座、成绩
-│  │     ├─ members/           # 班主任管理本班成员
-│  │     ├─ super/             # 超管：班级、账号、归属、回收站、审计
-│  │     └─ public/            # 版本号、健康检查
-│  └─ test/smoke.test.js       # 74 项集成测试
-├─ public/
-│  ├─ index.html               # 班级工作台
-│  ├─ login.html               # 独立登录页
-│  ├─ settings.html            # 独立设置页
-│  ├─ query.html               # 家长免登录成绩查询页
-│  ├─ css/design-system.css    # 设计系统 v2（4pt 间距 + 统一列模板 + tabular-nums）
-│  └─ js/
-│     ├─ api.js ui.js store.js app.js
-│     ├─ class-app.js class-mall.js class-seat.js class-scores.js
-│     ├─ members.js            # 成员管理
-│     ├─ super-app.js          # 超级管理员（含日志/备份/查询页签）
-│     └─ query.js              # 公开查询页逻辑
-├─ scripts/seed-demo.js        # 虚构演示数据（README 截图来源）
-├─ docs/screenshots/           # 界面截图（虚构数据）
-├─ data/                       # 运行后生成，已 gitignore
-└─ .env.example
-```
+- 数据库本身**不对外暴露**，只能通过 `/api/*` 接口经鉴权后读写；
+- 多实例同步：每个请求进入时（`gate` 中间件）最多每 2 秒检查一次远端 `meta.v`，若比本地新则拉取最新快照（`refreshIfRemoteNewer`）；写操作在响应结束后经 `persistIfDirty()` **串行化**写入，避免并发覆盖。
+- 极端并发下为「**最后写入胜出（last-write-wins）**」，低并发（单个班级日常使用）完全足够；见[注意事项](#注意事项与常见问题)。
 
 ---
 
-## API
+## 数据结构说明
 
-统一前缀 `/api`；写操作需带 `x-requested-with: fetch`（CSRF）；错误统一 `{ error: { code, message }, requestId }`。
+> 主键均为 `TEXT`（业务自生成 `前缀_随机hex`）；时间统一存毫秒时间戳 `INTEGER`；软删除用 `deleted_at` 标记（非物理删除）。下划线字段为后加迁移列，可安全兼容旧库。
 
-| 分组 | 端点 |
-| --- | --- |
-| 认证 | `POST /auth/login`（`entry: class\|super`）、`POST /auth/refresh`、`POST /auth/logout`、`GET /auth/me`、`POST /auth/password` |
-| 班级 | `GET /class/overview`、`PUT /class/profile`、`GET\|POST /class/students`、`PATCH\|DELETE /class/students/:id`、`POST /class/students/import`、`GET /class/students/template`、`DELETE /class/students/:id/logs`、`GET /class/groups` |
-| 积分 | `POST /class/points`、`GET\|DELETE /class/logs`、`DELETE /class/logs/:id`、`GET /class/logs/export.csv`、`GET /class/ranking/export.csv`、`POST /class/reset-points`、`POST /class/clear-all` |
-| 规则 / 商城 | `GET\|POST /class/rules`、`DELETE /class/rules/:id`、`POST /class/rules/reset\|import`、`GET\|POST /class/gifts`、`PATCH\|DELETE /class/gifts/:id`、`POST /class/gifts/:id/redeem`、`GET /class/redemptions(+/export.csv)` |
-| 排座 / 成绩 | `GET\|PUT /class/seat`、`POST /class/seat/auto`、`GET /class/exams`、`POST /class/exams/import`、`DELETE /class/exams/:id`、`GET /class/scores`、`GET /class/scores/student/:id` |
-| 成员 | `GET\|POST /members`、`PATCH\|DELETE /members/:id`、`POST /members/transfer-owner`、`PATCH /members/settings/limits` |
-| 超管 | `GET /super/overview`、`GET\|POST /super/classes`、`PATCH\|DELETE /super/classes/:id`、`POST /super/classes/:id/restore\|transfer-owner`、`GET /super/classes/export.csv`、`GET\|POST /super/accounts`、`PATCH\|DELETE /super/accounts/:id`、`POST /super/accounts/:id/reset-password`、`GET /super/recycle`、`POST /super/recycle/:id/restore`、`GET /super/audit` |
-| 操作日志 | `GET /super/logs`（时间/班级/角色/模块/结果/关键词筛选）、`GET /super/logs/export.csv`、`POST /super/logs/clear` |
-| 备份 | `GET /super/backup/class/:id`、`GET /super/backup/platform`、`POST /super/backup/import`（multipart `file` 或 `text`，`mode=create\|replace`） |
-| 对外查询 | `GET\|POST /super/query-tokens`（生成 / 列表）、`PATCH\|DELETE /super/query-tokens/:id`（启停 / 删除）、`GET\|POST /public/query/:token`（免登录，限流 60 次/分）、`GET\|POST /super/settings/public-query`（查询总开关，默认开启） |
-| 学生档案 | `GET /class/students/export.xlsx`（档案三 Sheet 导出）；`POST\|PATCH /class/students` 支持 `studentNo/birthday/address/guardianName/guardianPhone/guardianRelation/guardianAltPhone/note` |
-| 公开 | `GET /public/settings`、`GET /health`、`GET /ready` |
+### 核心表
 
----
+| 表 | 关键字段 | 说明 |
+| --- | --- | --- |
+| `classes` | `id, name, school, grade, badge, owner_id, cadre_limit_per, cadre_limit_day, created_at, deleted_at, deleted_reason` | 班级 = 独立数据空间（学生/积分/商城/成绩/排座都按 `class_id` 隔离）。`owner_id` 指向班主任账号 |
+| `accounts` | `id, type(super_admin\|class), role(super_admin\|owner\|teacher\|cadre), class_id, username(UNIQUE), phone, name, pwd_hash, status(active\|disabled), created_at, last_login_at, note, deleted_at, deleted_reason` | 账号表。超管 `class_id` 为空；`username` 唯一用于登录 |
+| `auth_sessions` | `id, account_id, token_hash(UNIQUE), role, class_id, created_at, expires_at, revoked_at, user_agent` | 刷新令牌服务端存储（只存 SHA-256 哈希），支持轮换与吊销 |
+| `students` | `id, class_id, name, group_name, sex, position, points, created_at, deleted_at` + `student_no, birthday, address, guardian_name, guardian_phone, guardian_relation, guardian_alt_phone, note` | 学生主表 + 档案扩展（家长联系方式等）。`points` 为当前累计积分 |
+| `point_logs` | `id, class_id, student_id, student_name, delta, reason, kind(manual\|batch\|redeem\|reset\|import), operator_id, operator_name, operator_role, created_at` | 积分流水。`operator_*` 记录「谁加的」，班干部操作可追溯 |
+| `quick_rules` | `id, class_id, name, score, sort_no, created_at` | 快捷加减分规则 |
+| `gifts` | `id, class_id, name, cost, icon, stock, created_at, deleted_at` | 积分商城礼物，`stock` 可空（不限库存） |
+| `redemptions` | `id, class_id, gift_id, gift_name, cost, student_id, student_name, created_at` | 兑换记录 |
+| `exams` | `id, class_id, name, full_score, created_at, deleted_at` | 考试 |
+| `scores` | `id, class_id, exam_id, student_id, score, created_at`（`UNIQUE(exam_id, student_id)`） | 成绩明细 |
+| `seat_plans` | `class_id(PK), cols, rows, scheme, seats(JSON), angle, confirmed_at, updated_at` | 排座方案，`seats` 为座位布局 JSON |
+| `recycle` | `id, class_id, kind, title, payload(JSON), operator_id, created_at, restored_at` | 清空/删除前的数据快照，超管可恢复 |
 
-## 数据模型
+### 审计 / 配置 / 查询表
 
-| 表 | 说明 |
-| --- | --- |
-| `classes` | 班级（= 数据空间）：名称、学校、年级、徽章、`owner_id`、班干部额度 |
-| `accounts` | 账号：`role` = super_admin / owner / teacher / cadre，`class_id` 归属，`phone`，软删除 |
-| `auth_sessions` | 刷新令牌（只存 SHA-256），支持轮换与吊销 |
-| `students` | 学生：姓名、小组、性别、职务、当前积分 + 档案（`student_no`、`birthday`、`address`、`guardian_name/phone/relation/alt_phone`、`note`），软删除 |
-| `point_logs` | 积分流水：分值、原因、类型、`operator_id / operator_name / operator_role` |
-| `quick_rules` / `gifts` / `redemptions` | 快捷规则、礼物、兑换记录 |
-| `exams` / `scores` | 考试与成绩（`exam_id + student_id` 唯一） |
-| `seat_plans` | 排座布局与座位 JSON |
-| `recycle` | 清空/删除前快照，超管可恢复 |
-| `admin_audit` | 超管操作审计（旧表，与 operation_logs 双写） |
-| `operation_logs` | **全量操作日志**：操作者（id/姓名/角色）、班级、模块、动作、目标、摘要、数量、成败、状态码、detail（含 BEFORE/AFTER 快照）、IP、UA |
-| `query_tokens` | **对外查询口令**：班级、口令（唯一）、范围、校验方式、启停、有效期、创建人、最近使用时间 |
-| `platform_settings` | **全局平台设置**（键值对）：如 `public_query_enabled`（成绩自助查询总开关，缺省开启） |
+| 表 | 关键字段 | 说明 |
+| --- | --- | --- |
+| `admin_audit` | `id, actor_id, actor_name, action, target_type, target_id, detail, created_at` | 超管操作审计（旧表，与 `operation_logs` 双写） |
+| `operation_logs` | `id, created_at, actor_id, actor_name, actor_role, class_id, class_name, module, action, target_type, target_id, target_name, summary, amount, result(success\|failed), status_code, detail(JSON), ip, user_agent` | **全量操作日志**：覆盖全部角色/模块。`detail` 含请求参数与编辑类 before/after 快照；`module` ∈ auth/class/members/super/backup/query |
+| `query_tokens` | `id, class_id, token(UNIQUE), name, scope(scores\|points\|all), mode(name_no\|phone\|none), enabled, expires_at, created_by, created_at, last_used_at` | 对外查询口令。`expires_at` 为空表示长期有效；`enabled=0` 即停用 |
+| `platform_settings` | `key(PK), value, updated_at, updated_by` | 全局键值配置，如 `public_query_enabled`（成绩自助查询总开关，缺省开启） |
+| `schema_migrations` | `name(PK), applied_at` | 内部迁移记录表，记录已执行的迁移文件名 |
 
-所有业务查询以 `class_id` 为边界（来自登录态，不接受前端传入）；越权访问统一 403/404。
+**访问约束**：所有业务查询以 `class_id` 为边界（来自登录态，不接受前端传入）；越权访问统一 403/404。超管接口独立命名空间 `/api/super`，不经过班级的 `class_id` 校验。
 
 ---
 
 ## 界面规范（视觉对齐）
 
-设计系统写在 `public/css/app.css` 顶部，四条硬规则：
+设计系统写在 `public/css/design-system.css`，四条硬规则：
 
 1. **间距只用 4pt 刻度**（4/8/12/16/24/32/48），不出现一次性数值；卡片内边距统一 `--pad-card`，页面左右统一 `--gutter`。
 2. **表格共用一套列模板**：`--cols-student / --cols-group / --cols-score` 同时作用于表头与数据行，保证纵向严格同列；只在断点处重定义，不在行内微调。
@@ -304,7 +337,7 @@ const delta = 最近一次 - 最早一次;     // 趋势判断
 npm test
 ```
 
-拉起独立实例（临时数据库 + 独立端口），覆盖：
+拉起独立实例（临时数据库 + 独立端口），覆盖 74 项集成测试：
 
 - 三角色 + 超管登录与能力清单
 - 权限边界：班干部额度/批量/删除/清空 403，老师不能删除与清空
@@ -313,7 +346,7 @@ npm test
 - 成员管理：建号、改密、停用、转移班主任、额度调整
 - 超管：建班、建号、改密、改手机号、改归属、"一班一主"、删除恢复、快照恢复、审计、导出
 - **学生档案**：档案写入/编辑、电话校验、档案 Excel 导出
-- **审计 / 备份 / 对外查询**：操作日志落库与筛选、CSV 导出、失败记录、日志清理；班级与平台备份导出（不含密码）、导入恢复、非法备份拒绝；查询口令生成、免登录查询与号码脱敏、学号不匹配拒绝、停用即失效
+- **审计 / 备份 / 对外查询**：操作日志落库与筛选、CSV 导出、失败记录、日志清理；班级与平台备份导出（不含密码）、导入恢复、非法备份拒绝；查询口令生成、免登录查询与号码脱敏、学号不匹配拒绝、停用即失效；查询总开关读写闭环
 - 安全：CSRF、422、越权 404、登出失效、刷新令牌
 
 ```
@@ -328,7 +361,7 @@ npm test
 
 无需服务器、无需证书运维，静态前端 + Node 云函数 + Blob 数据存储全部由 EdgeOne 免费套餐承载：
 
-1. **GitHub 直连**（推荐）：在 EdgeOne Pages 控制台导入 `Yellowsoy/banjifen` 私有仓库，构建配置：
+1. **GitHub 直连**（推荐）：在 EdgeOne Pages 控制台导入 `Yellowsoy/banjifen` 仓库，构建配置：
    - 安装命令 `npm install`
    - 构建命令 `node scripts/gen-inline.js && node scripts/build-edgeone.js`
    - 输出目录 `deploy/edgeone-dist`，Node 22
@@ -337,8 +370,6 @@ npm test
 3. **自定义域名**：控制台绑定域名后，在域名 DNS 处加 CNAME 到 EdgeOne 分配的目标（形如 `<域名>.pages.dnsoe6.com`），按提示加 `_dnsauth` 验证记录，免费证书自动签发（约几分钟到半小时）。
 
 架构说明：云函数把 `/api/*` 交给 `cloud-functions/api/[[default]].js`（打包后的 Express 应用），数据整库快照持久化在 Pages Blob（强一致读 + 每次写后落盘 + 多实例版本同步），wasm 与迁移 SQL 已内联进构建产物，无需本地文件系统。
-
-> 多实例说明：Blob 为「读己之写 + 快照版本同步」，同一班级低并发使用完全够用；极端并发下写入为最后写入胜出。
 
 ### 方式二：自有服务器
 
@@ -367,9 +398,40 @@ server {
 }
 ```
 
-生产清单：`NODE_ENV=production`、强随机 `JWT_SECRET`、HTTPS（Cookie 自动加 `secure` 并启用 HSTS）、定期备份 `data/banjifen.sqlite`。
+生产清单：`NODE_ENV=production`、强随机 `JWT_SECRET`（≥32 字符）、HTTPS（Cookie 自动加 `secure` 并启用 HSTS）、定期备份 `data/banjifen.sqlite`；`AUTH_LOGIN_RATE_MAX` 可按需调整登录限流阈值。
 
 > SQLite 以 sql.js 载入内存、写入后原子落盘，单校规模（万级学生、十万级流水）足够。若要多实例横向扩展，把 `server/src/db/index.js` 换成 PostgreSQL 驱动即可，上层仓储调用方式不变。
+
+---
+
+## 注意事项与常见问题
+
+### 数据安全与备份
+
+- ⚠️ **备份文件不含密码**：无论班级备份还是平台全量备份，JSON 里都不含 `pwd_hash`。恢复后的账号处于「密码未设置」状态，必须由超管在「全部账号」里**重置密码**才能登录。这是刻意为之，避免密码随备份文件扩散。
+- ⚠️ **本地部署务必定期备份 `data/banjifen.sqlite`**：这是唯一数据源。SQLite 以「整库文件」形式落盘，做整库拷贝即可（建议在低峰期、或停服后拷贝）。
+- ⚠️ **不要直接手改数据库**：所有写操作都应通过界面/接口，绕过后端直接改库会绕过权限、审计与事务，且可能与内存态不一致。
+
+### 部署与运行
+
+- ⚠️ **改完迁移 SQL 必须重跑构建**：线上（EdgeOne）用的迁移是 `migrations.generated.js` 的内联副本。改了 `migrations/*.sql` 后，本地要 `npm run build:edgeone` 重新生成，否则线上结构不会变。
+- ⚠️ **旧版数据文件不兼容**：v2 引入角色与班级归属，与早期「一个账号即一个班级」的 v1 结构不兼容。若启动检测到 `accounts` 缺 `class_id/role`，会明确报错提示，需删除旧 `data/banjifen.sqlite` 重建（真实数据请先通过旧版导出 CSV）。
+- ⚠️ **EdgeOne 多实例一致性**：Blob 为「读己之写 + 每 2 秒版本同步」，同一班级低并发使用完全够用；**极端并发下写入为最后写入胜出（last-write-wins）**，多班级高并发场景建议在自有服务器（fs 模式，单进程独占）下运行。
+- ⚠️ **JWT 密钥**：本地/自有服务器用 `JWT_SECRET` 环境变量（≥32 字符，**生产环境务必更换**）；EdgeOne 模式下若无环境变量，首次随机生成并存入 Blob `bj/config/jwt-secret`，保证多实例与冷启动之间签名一致。若彻底清空 Blob，会重新生成密钥，导致旧登录态全部失效（用户需重新登录）。
+
+### 操作与权限
+
+- ⚠️ **「清空数据」不可逆，但可恢复**：班主任的清空/删除会先写 `recycle` 快照，超管可在回收站一键还原；但主动删除的班级/账号若未走回收站或已清空回收站，则无法找回。
+- ⚠️ **班干部限额是硬约束**：单次 ≤`cadre_limit_per`（默认 5）、每日绝对值 ≤`cadre_limit_day`（默认 20），超管可在班级管理里调整，用于防止学生互刷分。
+- ⚠️ **对外查询总开关关闭 = 真正关停**：关闭后不仅登录页入口隐藏，公开查询接口（`/api/public/query/:token`）也会直接拒绝。若你只想要「隐藏入口、链接仍可直访」，需去掉 `server/src/core/query.js` 里对 `public_query_enabled` 的门禁（默认实现为完全关停，更安全）。
+- ⚠️ **家长查询依赖档案字段**：查询校验方式选「姓名 + 学号」时，必须保证学生档案已填学号；选「手机号后 4 位」时须填家长手机号，否则无法命中。
+
+### 安全与合规
+
+- 🔒 **`.env` 与 `data/` 已 gitignore**：真实配置与业务数据不会进 GitHub。仓库内只有虚构的种子/演示数据生成脚本（`scripts/seed-demo.js`）。
+- 🔒 **登录限流**：默认每 IP 5 分钟 30 次（`AUTH_LOGIN_RATE_MAX` 可配），内存窗口；多实例下建议换 Redis（当前为单进程内存计数）。
+- 🔒 **公开查询限流**：免登录查询接口 60 次/分，防口令被爆破；失败尝试全部记入操作日志。
+- 🔒 **手机号隐私**：仅超管可见全量手机号，班主任见脱敏值，公开查询页家长手机号一律脱敏。
 
 ---
 
@@ -377,10 +439,10 @@ server {
 
 - **密码**：bcrypt（cost 10）；超管重置密码后强制该账号所有会话失效
 - **令牌**：访问令牌 30 分钟 + 刷新令牌 14 天（服务端存哈希、刷新即轮换），全部 httpOnly Cookie，不落 localStorage
-- **CSRF**：`SameSite=Lax` + 非 GET 强制自定义头
+- **CSRF**：`SameSite=Lax` + 非 GET 强制自定义头 `x-requested-with: fetch`
 - **越权**：`requireAuth(role)` → `requireCap(capability)` → 服务层 `class_id` 归属校验；超管接口独立命名空间 `/api/super`
 - **隐私**：手机号仅超管见全量，班主任见脱敏值；日志脱敏敏感字段
-- **限流**：登录 5 分钟 30 次（内存窗口，多实例建议换 Redis）
+- **限流**：登录 5 分钟 30 次（内存窗口，多实例建议换 Redis）；公开查询 60 次/分
 - **审计**：全站写操作统一经 `trail()` 中间件落 `operation_logs`（含失败请求），敏感字段（密码/令牌）自动脱敏，编辑操作留前后快照
 - **对外查询**：公开接口仅暴露命中学生的本人数据，家长手机号一律脱敏，口令可随时吊销，限流 60 次/分；另有全局总开关，关闭后公开查询接口直接拒绝（默认开启）
 - **数据**：多步写入事务；SQLite 以临时文件 + rename 原子落盘，退出前 flush
