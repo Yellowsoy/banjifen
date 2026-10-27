@@ -35,6 +35,12 @@ copyDir(path.join(ROOT, 'public'), DIST);
 // 2. 服务端源码（供云函数打包引用）
 copyDir(path.join(ROOT, 'server/src'), path.join(DIST, '_srv'));
 
+// 2.1 许可证文件随产物一起分发（Apache-2.0 §4 要求分发时携带许可与声明）
+for (const licFile of ['LICENSE', 'NOTICE']) {
+  const src = path.join(ROOT, licFile);
+  if (fs.existsSync(src)) fs.copyFileSync(src, path.join(DIST, licFile));
+}
+
 // 3. 云函数入口：/api/* → Express 应用
 const FN_DIR = path.join(DIST, 'cloud-functions/api');
 fs.mkdirSync(FN_DIR, { recursive: true });

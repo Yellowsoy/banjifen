@@ -3,6 +3,24 @@
   "version": "1.0.0",
   "private": true,
   "description": "班级积分管理 - 全栈复刻版（Node.js + Express + SQLite/sql.js + 原生前端）",
+  "license": "Apache-2.0",
+  "author": "Yellowsoy (banjifen contributors)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yellowsoy/banjifen.git"
+  },
+  "homepage": "https://github.com/Yellowsoy/banjifen",
+  "bugs": {
+    "url": "https://github.com/Yellowsoy/banjifen/issues"
+  },
+  "keywords": [
+    "education",
+    "class-management",
+    "points",
+    "school",
+    "vanilla-js",
+    "edgeone"
+  ],
   "main": "server/src/index.js",
   "type": "commonjs",
   "engines": {

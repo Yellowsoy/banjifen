@@ -1,0 +1,72 @@
+班级积分管理（banjifen）
+Copyright 2026 Yellowsoy (banjifen contributors)
+
+本产品包含以下第三方软件，其著作权归各自作者所有，并按下列协议授权。
+第三方组件的完整许可文本随本项目一并分发，或可通过其官方渠道获取。
+
+================================================================================
+sql.js (https://github.com/sql-js/sql.js)
+================================================================================
+许可协议：MIT License
+版权声明：Copyright (c) 2017 sql.js authors (see AUTHORS)
+
+用途：
+  本项目在 server/src/db/sql-wasm-loader.js 与 server/src/db/sql-wasm.b64.js 中
+  内联了 sql.js 1.15.1 的 WASM loader 与 SQLite WebAssembly 二进制。
+  内联的目的是避免生产环境安装整个 sql.js 包（约 30MB），从而缩小云函数
+  代码包体积、缩短冷启动耗时。相关文件由 scripts/gen-inline.js 自动生成，
+  其文件头保留了原始的 MIT 许可与版权声明。
+
+MIT License 全文：
+---------------------------------------------------------------------------
+MIT license
+
+Copyright (c) 2017 sql.js authors (see AUTHORS)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+---------------------------------------------------------------------------
+
+================================================================================
+SheetJS / xlsx (https://github.com/SheetJS/sheetjs)
+================================================================================
+许可协议：Apache License 2.0
+版权声明：Copyright (c) 2014-2019 SheetJS Community Edition
+
+用途：
+  本项目依赖 xlsx (SheetJS) 实现学生名单与成绩的 Excel 导入导出。
+  xlsx 自身即为 Apache-2.0 协议，与本项目主协议一致。
+
+================================================================================
+运行时依赖一览（均为宽松协议，与 Apache-2.0 兼容）
+================================================================================
+  express               MIT
+  zod                   MIT
+  bcryptjs              MIT
+  jsonwebtoken          MIT
+  cookie-parser         MIT
+  multer                MIT
+  dotenv                MIT
+  @edgeone/pages-blob   MIT
+  xlsx (SheetJS)        Apache-2.0
+  sql.js（构建期内联）   MIT
+
+说明：
+  本项目的自有代码（server/、public/、scripts/、deploy/ 等目录中的内容，
+  以及本文件的其余部分）以 Apache License 2.0 授权。
+  第三方组件的源代码保持其各自的原始许可，不受本项目许可条款的修改。

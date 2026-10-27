@@ -10,6 +10,8 @@ v2.1 新增三大能力：
 
 整套系统可完全私有部署：一个 Node.js 进程 + 一个 SQLite 文件，无需任何第三方云服务；线上版本托管在 EdgeOne Pages（静态前端 + Node 云函数 + Blob 数据存储），域名 <https://bj.5166966.xyz>。
 
+> 📄 开源协议：[Apache License 2.0](LICENSE) —— 允许商用与闭源二次分发，仅需保留版权声明。
+
 > 以上截图使用 **虚构演示数据**（示例学校、化名学生、138xxxx 测试手机号），由仓库内 `scripts/seed-demo.js` 生成，可复现。
 
 ---
@@ -32,6 +34,7 @@ v2.1 新增三大能力：
 - [免费架构与成本（永久 $0）](#免费架构与成本永久-0)
 - [注意事项与常见问题](#注意事项与常见问题)
 - [安全设计](#安全设计)
+- [开源协议](#开源协议)
 - [说明](#说明)
 
 ---
@@ -259,6 +262,8 @@ v2.1 新增三大能力：
 ├─ docs/screenshots/           # 界面截图（虚构数据）
 ├─ data/                       # 运行后生成（SQLite + uploads），已 gitignore
 ├─ .env.example                # 环境变量样例
+├─ LICENSE                     # ★ Apache License 2.0 全文
+├─ NOTICE                      # ★ 第三方组件声明（sql.js MIT 等）
 └─ package.json
 ```
 
@@ -702,8 +707,78 @@ on:
 
 ---
 
+## 开源协议
+
+本项目采用 **[Apache License 2.0](LICENSE)** 授权。
+
+```
+Copyright 2026 Yellowsoy (banjifen contributors)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+### 你可以做什么
+
+| 权限 | 说明 |
+| --- | --- |
+| ✅ 商用 | 可用于商业场景，无需额外授权 |
+| ✅ 修改 | 可自由修改、定制为自己的版本 |
+| ✅ 分发 | 可重新发布、再分发（含闭源集成） |
+| ✅ 私有化部署 | 可自行部署运营，**数据完全归你自己**，不依赖本项目方|
+| ✅ 提交贡献 | 欢迎 PR 与 Issue |
+
+### 你需要做什么
+
+| 义务 | 说明 |
+| --- | --- |
+| ⚠️ 保留版权与许可声明 | 分发时必须**保留** `LICENSE` 中的版权声明与许可声明 |
+| ⚠️ 标注修改 | 若修改了代码，需在文件中注明「已修改」（Apache-2.0 §4(b)） |
+| ⚠️ 声明专利授权 | 贡献者默认授予专利许可，且不得以本项目名义主张专利 |
+| ❌ 不得使用原作者商标 | 不得用本项目名称/logo 为衍生作品做背书（§6） |
+| ❌ 不得主张担保 | 软件「按原样提供」，作者不承担担保责任（§7） |
+
+> 简言之：**Apache-2.0 是对企业最友好的宽松协议**——允许闭源商用，只要求保留声明。
+> 对比 MIT 多了一项「明确的专利授权」，对 GPL 多了一项「可以闭源分发」。
+
+### 第三方组件
+
+本项目依赖的第三方库均采用宽松协议，与 Apache-2.0 兼容：
+
+| 组件 | 协议 | 用途 |
+| --- | --- | --- |
+| Express | MIT | HTTP 框架 |
+| zod | MIT | 参数校验 |
+| bcryptjs | MIT | 密码散列 |
+| jsonwebtoken | MIT | JWT 签发/校验 |
+| cookie-parser | MIT | Cookie 解析 |
+| multer | MIT | 文件上传 |
+| dotenv | MIT | 环境变量 |
+| @edgeone/pages-blob | MIT | EdgeOne Blob 存储 |
+| xlsx (SheetJS) | Apache-2.0 | Excel 导入导出 |
+| sql.js（构建期内联） | MIT | SQLite WebAssembly |
+
+完整的第三方声明见 [`NOTICE`](NOTICE)。其中 `sql.js` 的 WASM loader 与 SQLite 二进制被内联到
+`server/src/db/` 下（目的是把云函数包从 53MB 压到 23MB），其原始 MIT 版权声明已保留在文件头与 NOTICE 中。
+
+### 商标
+
+"班级积分管理 / Class Points" 的名称与界面标识不包含在 Apache-2.0 授权范围内。
+二次分发时可自行更换名称与图标，但请勿暗示与原作者存在官方关联。
+
+---
+
 ## 说明
 
 - 界面与业务流程参考了公开的班级积分类产品形态后**重写实现**，代码为本项目自有实现；不含任何第三方站点的私有代码或用户数据。
 - README 截图均使用 `scripts/seed-demo.js` 生成的**虚构数据**（示例学校、化名、测试号段手机号）。
-- 如需商用或二次分发，请自行确认所用第三方库（Express / SheetJS 等）的许可条款。
+- 本项目以 [Apache License 2.0](LICENSE) 开源，完整条款见仓库根目录的 `LICENSE` 与 `NOTICE` 文件。
