@@ -13,6 +13,8 @@ export async function refreshOverview() {
   state.overview = data;
   $('#statStudents').textContent = data.stats.students;
   $('#statRecords').textContent = data.stats.records;
+  if ($('#statToday')) $('#statToday').textContent = data.stats.todayRecords ?? 0;
+  if ($('#statGroups')) $('#statGroups').textContent = data.stats.groups ?? 0;
   const cls = data.class || {};
   $('#appTitle').textContent = cls.name || '班级积分管理';
   $('#appRole').textContent = roleLabel();
@@ -29,9 +31,10 @@ export function applyPermissions() {
   $('#importCollapse').classList.toggle('hidden', !can('student:create'));
   $('#btnBatch').classList.toggle('hidden', !can('points:batch'));
   $('#btnExport').classList.toggle('hidden', !can('export:data'));
-  $('#btnScores').classList.toggle('hidden', !can('exam:read'));
   $('#viewTabs [data-view="mall"]').classList.toggle('hidden', !can('gift:read'));
   $('#viewTabs [data-view="seat"]').classList.toggle('hidden', !can('seat:read'));
+  $('#viewTabs [data-view="scores"]').classList.toggle('hidden', !can('exam:read'));
+  $('#viewTabs [data-view="members"]').classList.toggle('hidden', !can('member:read'));
 }
 
 /* ================= 学生榜 ================= */
@@ -83,16 +86,16 @@ function renderStudents() {
         canEdit ? `<button class="op-btn" data-act="edit">编辑</button>` : '',
         canDelete ? `<button class="op-btn" data-act="delete">删除</button>` : '',
       ].join('');
-      return `<div class="table-row" data-id="${stu.id}">
-        <div><div class="rank-badge ${rankCls}">${rank}</div></div>
-        <div>
+      return `<div class="table-row" data-id="${stu.id}" role="row">
+        <div role="cell"><div class="rank-badge ${rankCls}">${rank}</div></div>
+        <div role="cell">
           <div class="stu-name">${escapeHtml(stu.name)}</div>
-          <div class="stu-sub">${escapeHtml(stu.sex || '—')}</div>
+          <div class="stu-sub">${escapeHtml(stu.sex || '—')}${stu.position ? ` · ${escapeHtml(stu.position)}` : ''}</div>
         </div>
-        <div class="center">${stu.groupName ? `<span class="badge">${escapeHtml(stu.groupName)}</span>` : '<span class="tiny muted">—</span>'}</div>
-        <div class="center tiny muted">${escapeHtml(stu.position || '—')}</div>
-        <div class="right"><span class="points-pill ${points < 0 ? 'neg' : ''}">${points}</span></div>
-        ${ops ? `<div class="ops">${ops}</div>` : ''}
+        <div class="center" role="cell">${stu.groupName ? `<span class="badge">${escapeHtml(stu.groupName)}</span>` : '<span class="tiny muted">—</span>'}</div>
+        <div class="center tiny muted col-position" role="cell">${escapeHtml(stu.position || '—')}</div>
+        <div class="right col-points" role="cell"><span class="points-pill ${points < 0 ? 'neg' : ''}">${points}</span></div>
+        ${ops ? `<div class="ops" role="cell">${ops}</div>` : '<div role="cell"></div>'}
       </div>`;
     })
     .join('');
@@ -657,10 +660,20 @@ export async function mountClassApp({ logout }) {
   await Promise.all([loadStudents(), loadGroups()]);
 
   $$('[data-toggle]').forEach((head) => {
-    head.onclick = () => {
+    const toggle = () => {
       const el = document.getElementById(head.dataset.toggle);
-      if (el) el.classList.toggle('open');
+      if (el) {
+        const open = el.classList.toggle('open');
+        head.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
     };
+    head.onclick = toggle;
+    head.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
+    });
   });
 
   $('#viewTabs').addEventListener('click', (e) => {
@@ -670,7 +683,10 @@ export async function mountClassApp({ logout }) {
 
   $('#statStudentsCard').onclick = () => switchView('students');
   $('#statRecordsCard').onclick = () => switchView('history');
-  $('#btnScores').onclick = () => switchView('scores');
+  const statTodayCard = $('#statTodayCard');
+  if (statTodayCard) statTodayCard.onclick = () => switchView('history');
+  const statGroupsCard = $('#statGroupsCard');
+  if (statGroupsCard) statGroupsCard.onclick = () => switchView('groups');
   $('#btnRefresh').onclick = async () => {
     toast('正在刷新…');
     await Promise.all([refreshOverview(), loadStudents(), loadGroups()]);
@@ -872,7 +888,17 @@ export function switchView(view) {
     const el = $(sel);
     if (el) el.classList.toggle('hidden', key !== view);
   });
-  $$('.view-tab').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
+  // 保证任一视图都有 active 页签（members 无独立页签时回退到「成绩」）
+  const TAB_OF = {
+    students: 'students', groups: 'groups', seat: 'seat',
+    mall: 'mall', history: 'history', scores: 'scores', members: 'members',
+  };
+  const activeTab = TAB_OF[view] || 'students';
+  $$('.view-tab').forEach((b) => {
+    const isActive = b.dataset.view === activeTab;
+    b.classList.toggle('active', isActive);
+    b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
   if (view === 'history') loadHistory();
   if (view === 'groups') loadGroups();
   if (view === 'seat') import('./class-seat.js').then((m) => m.renderSeat());

@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <meta name="theme-color" content="#3B6FF5" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="description" content="班级积分管理：登录后可进行花名册导入、实时加减分、积分排行、积分排座、积分商城与成绩分析。" />
 <title>登录 · 班级积分管理</title>
 <link rel="stylesheet" href="./css/design-system.css" />
@@ -29,11 +29,11 @@
 
       <div class="col">
         <div class="field">
-          <label>登录账号</label>
+          <label for="loginUser">登录账号</label>
           <input id="loginUser" class="input" placeholder="手机号或账号" autocomplete="username" />
         </div>
         <div class="field">
-          <label>登录密码</label>
+          <label for="loginPwd">登录密码</label>
           <input id="loginPwd" class="input" type="password" placeholder="请输入密码" autocomplete="current-password" />
         </div>
         <div id="loginErr" class="err-text hidden"></div>
@@ -53,7 +53,7 @@
   </main>
 </div>
 
-<div class="toast-wrap" id="toastWrap"></div>
+<div class="toast-wrap" id="toastWrap" role="status" aria-live="polite"></div>
 
 <script type="module">
   const BASE = '/api';

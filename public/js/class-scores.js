@@ -87,7 +87,7 @@ function renderBody(data) {
             ${r.diff !== undefined ? `<div class="stu-sub ${r.diff >= 0 ? 'delta-pos' : 'delta-neg'}">较班均 ${r.diff >= 0 ? '+' : ''}${r.diff}</div>` : ''}
           </div>
           <div class="center tiny muted">${escapeHtml(r.groupName || '—')}</div>
-          <div class="right"><span class="points-pill">${r.score}</span></div>
+          <div class="right"><span class="points-pill ${r.score >= 60 ? '' : 'neg'}">${r.score}</span></div>
         </div>`;
       })
       .join('')}
@@ -112,13 +112,13 @@ function trendChart(records) {
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
   return `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:132px;display:block">
-    <polyline fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linejoin="round" points="${points.join(' ')}" />
+    <polyline fill="none" stroke="var(--c-primary)" stroke-width="2.5" stroke-linejoin="round" points="${points.join(' ')}" />
     ${records
       .map((r, i) => {
         const [x, y] = points[i].split(',');
-        return `<circle cx="${x}" cy="${y}" r="3.5" fill="#4f46e5" />
-          <text x="${x}" y="${Number(y) - 8}" font-size="9" fill="#64748b" text-anchor="middle">${r.score}</text>
-          <text x="${x}" y="${height - 4}" font-size="8" fill="#94a3b8" text-anchor="middle">${escapeHtml(r.name.slice(0, 5))}</text>`;
+        return `<circle cx="${x}" cy="${y}" r="3.5" fill="var(--c-primary)" />
+          <text x="${x}" y="${Number(y) - 8}" font-size="12" fill="var(--c-ink-2)" text-anchor="middle">${r.score}</text>
+          <text x="${x}" y="${height - 4}" font-size="12" fill="var(--c-ink-3)" text-anchor="middle">${escapeHtml(r.name.slice(0, 5))}</text>`;
       })
       .join('')}
   </svg>`;
@@ -131,9 +131,9 @@ async function openStudentScore(studentId) {
     body: `
       <div class="tiny muted" style="margin-bottom:8px">${escapeHtml(data.student.groupName || '未分组')} · ${escapeHtml(data.student.position || '')}</div>
       ${trendChart(data.trend)}
-      <div class="card" style="margin-top:12px;box-shadow:none;background:#f8fafc">
-        <div class="tiny muted" style="margin-bottom:4px">学习建议（按分数区间与趋势自动生成）</div>
-        <div style="font-size:13px;line-height:1.7">${escapeHtml(data.advice)}</div>
+      <div class="advice-card">
+        <div class="tiny muted mb-1">学习建议（按分数区间与趋势自动生成）</div>
+        <div class="modal-text">${escapeHtml(data.advice)}</div>
       </div>
       <div style="margin-top:12px">
         ${data.records

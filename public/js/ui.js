@@ -36,11 +36,16 @@ export function toast(message, type = '') {
 }
 
 let currentModal = null;
+let lastFocused = null;
 
 export function closeModal() {
   const root = $('#modalRoot');
   if (root) root.innerHTML = '';
   currentModal = null;
+  if (lastFocused && typeof lastFocused.focus === 'function') {
+    lastFocused.focus();
+    lastFocused = null;
+  }
 }
 
 /**
@@ -49,20 +54,24 @@ export function closeModal() {
  */
 export function openModal({ title, body, footer = '', onMount, onClose, wide = false }) {
   closeModal();
+  lastFocused = document.activeElement;
   const root = $('#modalRoot');
   const mask = document.createElement('div');
   mask.className = 'modal-mask';
   mask.innerHTML = `
-    <div class="modal" style="${wide ? 'max-width:760px' : ''}">
+    <div class="modal${wide ? ' is-wide' : ''}" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">
       <div class="modal-head">
-        <div class="modal-title">${escapeHtml(title)}</div>
-        <button class="modal-close" data-close>✕</button>
+        <div class="modal-title" tabindex="-1">${escapeHtml(title)}</div>
+        <button class="modal-close" data-close aria-label="关闭">✕</button>
       </div>
       <div class="modal-body">${body}</div>
       ${footer ? `<div class="modal-actions">${footer}</div>` : ''}
     </div>`;
   root.appendChild(mask);
   currentModal = mask;
+  // 打开后焦点移到标题
+  const titleEl = mask.querySelector('.modal-title');
+  if (titleEl) titleEl.focus();
   mask.addEventListener('click', (e) => {
     if (e.target === mask || e.target.closest('[data-close]')) {
       closeModal();
@@ -83,7 +92,7 @@ export function confirmDialog({ title = '确认操作', message = '', okText = '
   return new Promise((resolve) => {
     const mask = openModal({
       title,
-      body: `<div style="font-size:14px;color:#334155;white-space:pre-wrap;line-height:1.7">${escapeHtml(message)}</div>`,
+      body: `<div class="modal-text">${escapeHtml(message)}</div>`,
       footer: `<button class="btn btn-ghost" data-cancel>取消</button>
                <button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" data-ok>${escapeHtml(okText)}</button>`,
       onClose: () => resolve(false),
@@ -106,7 +115,7 @@ export function promptDialog({ title, label, value = '', placeholder = '', okTex
   return new Promise((resolve) => {
     openModal({
       title,
-      body: `<div class="field"><label>${escapeHtml(label)}</label>
+      body: `<div class="field"><label for="promptInput">${escapeHtml(label)}</label>
         <input class="input" id="promptInput" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}" /></div>`,
       footer: '<button class="btn btn-ghost" data-close>取消</button><button class="btn btn-primary" id="promptOk">' + escapeHtml(okText) + '</button>',
       onClose: () => resolve(null),
@@ -173,7 +182,7 @@ export function debounce(fn, wait = 260) {
 export function renderPager(container, { page, pageSize, total, onChange }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (total <= pageSize) {
-    container.innerHTML = total ? `<div class="tiny muted">共 ${total} 条</div>` : '';
+    container.innerHTML = total ? `<div class="pager-total">共 ${total} 条</div>` : '';
     return;
   }
   const btn = (label, target, disabled, active = false) =>
@@ -187,7 +196,7 @@ export function renderPager(container, { page, pageSize, total, onChange }) {
     ${nums.join('')}
     ${btn('›', page + 1, page >= pages)}
     ${btn('»', pages, page >= pages)}
-    <span class="tiny muted" style="margin-left:6px">共 ${total} 条</span>`;
+    <span class="pager-total" style="margin-left:6px">共 ${total} 条</span>`;
   container.querySelectorAll('button[data-page]').forEach((el) => {
     el.onclick = () => {
       const target = Number(el.dataset.page);

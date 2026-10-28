@@ -31,9 +31,9 @@ async function loadStats() {
     ['积分记录', s.records],
     ['7 日活跃', s.activeWeek],
   ]
-    .map(([label, value]) => `<div class="card" style="padding:12px 16px">
-        <div class="tiny muted">${label}</div>
-        <div class="num" style="font-size:22px;font-weight:800;line-height:1.3">${value}</div>
+    .map(([label, value]) => `<div class="stat-card">
+        <div class="label">${label}</div>
+        <div class="value num">${value}</div>
       </div>`)
     .join('');
 }
@@ -72,7 +72,7 @@ async function loadClasses() {
                   <button data-act="edit">编辑班级</button>
                   <button data-act="add-account">添加账号</button>
                   <button data-act="accounts">查看账号</button>
-                  <button data-act="delete" style="color:#be123c">删除班级</button>
+                  <button data-act="delete" class="dropdown-item is-danger">删除班级</button>
                 </div>
               </div>
             </td>
@@ -272,7 +272,7 @@ async function loadAccounts() {
                   <button data-act="edit">编辑 / 改归属</button>
                   <button data-act="reset">重置密码</button>
                   <button data-act="toggle">${row.status === 'disabled' ? '启用账号' : '停用账号'}</button>
-                  <button data-act="delete" style="color:#be123c">删除账号</button>
+                  <button data-act="delete" class="dropdown-item is-danger">删除账号</button>
                 </div>
               </div>
             </td>

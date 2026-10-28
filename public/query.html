@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <meta name="theme-color" content="#3B6FF5" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="description" content="学生成绩与积分自助查询：输入班主任提供的查询口令，即可查看本人成绩、班级排名与积分情况。" />
 <meta name="robots" content="noindex" />
 <title>成绩查询 · 班级积分管理</title>
@@ -26,7 +26,7 @@
     <main class="card query-card" id="stepTokenCard">
       <div class="col">
         <div class="field">
-          <label>查询口令</label>
+          <label for="qToken">查询口令</label>
           <input id="qToken" class="input query-token-input" placeholder="例：8F2K9QD1ZP" maxlength="24" autocomplete="off" spellcheck="false" />
         </div>
         <div class="err-text hidden" id="qErr"></div>
@@ -49,15 +49,15 @@
           <button class="btn btn-sm btn-ghost" id="btnBack">换口令</button>
         </div>
         <div class="field">
-          <label>学生姓名</label>
+          <label for="qName">学生姓名</label>
           <input id="qName" class="input" placeholder="请输入学生完整姓名" maxlength="20" autocomplete="off" />
         </div>
         <div class="field hidden" id="fStudentNo">
-          <label>学号</label>
+          <label for="qStudentNo">学号</label>
           <input id="qStudentNo" class="input" placeholder="请输入学号" maxlength="24" autocomplete="off" />
         </div>
         <div class="field hidden" id="fPhoneTail">
-          <label>家长手机号后 4 位</label>
+          <label for="qPhoneTail">家长手机号后 4 位</label>
           <input id="qPhoneTail" class="input" placeholder="4 位数字" inputmode="numeric" maxlength="4" autocomplete="off" />
         </div>
         <div class="err-text hidden" id="qErr2"></div>
@@ -75,7 +75,7 @@
   </div>
 </div>
 
-<div class="toast-wrap" id="toastWrap"></div>
+<div class="toast-wrap" id="toastWrap" role="status" aria-live="polite"></div>
 
 <script type="module" src="./js/query.js"></script>
 </body>

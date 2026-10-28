@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <meta name="theme-color" content="#3B6FF5" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="description" content="班级积分管理 · 设置：班级资料、快捷规则、成员管理、额度、数据导出与危险操作。" />
 <title>设置 · 班级积分管理</title>
 <link rel="stylesheet" href="./css/design-system.css" />
@@ -50,21 +50,21 @@
           <p>班级名称、学校与年级会显示在排行榜顶部，徽章建议使用正方形图片。</p>
           <div class="col">
             <div class="field">
-              <label>班级名称</label>
+              <label for="cpName">班级名称</label>
               <input class="input" id="cpName" maxlength="20" placeholder="如：三年二班" />
             </div>
             <div class="row wrap">
               <div class="field grow" style="min-width:150px">
-                <label>学校（选填）</label>
+                <label for="cpSchool">学校（选填）</label>
                 <input class="input" id="cpSchool" maxlength="40" />
               </div>
               <div class="field" style="width:130px">
-                <label>年级</label>
+                <label for="cpGrade">年级</label>
                 <input class="input" id="cpGrade" maxlength="20" />
               </div>
             </div>
             <div class="field">
-              <label>班级徽章</label>
+              <label for="cpBadgeFile">班级徽章</label>
               <div class="row wrap">
                 <div class="app-badge" id="cpBadgePreview">积</div>
                 <input type="file" id="cpBadgeFile" accept="image/*" class="input" style="width:auto;padding-top:9px" />
@@ -112,11 +112,11 @@
           <p>额度同时作用于加分与减分，按绝对值累计，超出后无法继续提交。</p>
           <div class="row wrap">
             <div class="field grow" style="min-width:130px">
-              <label>单次上限</label>
+              <label for="limitPer">单次上限</label>
               <input class="input num" id="limitPer" type="number" min="1" max="100" />
             </div>
             <div class="field grow" style="min-width:130px">
-              <label>每日上限</label>
+              <label for="limitDay">每日上限</label>
               <input class="input num" id="limitDay" type="number" min="1" max="1000" />
             </div>
           </div>
@@ -154,7 +154,7 @@
   </main>
 </div>
 
-<div class="toast-wrap" id="toastWrap"></div>
+<div class="toast-wrap" id="toastWrap" role="status" aria-live="polite"></div>
 <div id="modalRoot"></div>
 
 <script type="module" src="./js/settings.js"></script>

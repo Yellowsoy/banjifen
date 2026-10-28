@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <meta name="theme-color" content="#3B6FF5" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="description" content="班级积分管理：花名册导入、实时加减分、积分排行、积分排座、积分商城、成绩分析与权限分级。" />
 <title>班级积分管理</title>
 <link rel="stylesheet" href="./css/design-system.css" />
@@ -24,26 +24,24 @@
         </div>
       </div>
       <div class="header-actions">
-        <button class="icon-btn" id="btnRefresh" title="刷新数据">
+        <button class="icon-btn" id="btnRefresh" title="刷新数据" aria-label="刷新数据">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 11a8 8 0 1 0-2.6 5.9"/><path d="M20 4v7h-7"/></svg>
         </button>
-        <button class="icon-btn" id="btnExport" title="导出榜单">
+        <button class="icon-btn" id="btnExport" title="导出榜单" aria-label="导出榜单">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
         </button>
-        <button class="icon-btn" id="btnScores" title="成绩">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
-        </button>
-        <a class="icon-btn" id="btnMenu" href="/settings.html" title="设置">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>
+        <a class="icon-btn" id="btnMenu" href="/settings.html" title="设置" aria-label="设置">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </a>
       </div>
     </div>
   </header>
 
+  <div class="app-container">
   <div class="class-layout">
   <aside class="class-sidebar">
   <div class="collapse" id="addCollapse">
-    <div class="collapse-head" data-toggle="addCollapse">新增学生（含档案）<span class="chev">⌄</span></div>
+    <div class="collapse-head" data-toggle="addCollapse" role="button" tabindex="0" aria-expanded="false">新增学生（含档案）<span class="chev">⌄</span></div>
     <div class="collapse-body">
       <div class="col">
         <input id="inputName" class="input" placeholder="学生姓名 *" maxlength="20" />
@@ -64,7 +62,7 @@
         <div class="divider-label">家长联系方式</div>
         <div class="row">
           <input id="inputGuardianName" class="input" placeholder="家长姓名" maxlength="20" />
-          <select id="inputGuardianRelation" class="select" style="width:110px">
+          <select id="inputGuardianRelation" class="select field-sm">
             <option value="">关系</option>
             <option value="父亲">父亲</option>
             <option value="母亲">母亲</option>
@@ -86,7 +84,7 @@
   </div>
 
   <div class="collapse" id="importCollapse">
-    <div class="collapse-head" data-toggle="importCollapse">批量导入<span class="chev">⌄</span></div>
+    <div class="collapse-head" data-toggle="importCollapse" role="button" tabindex="0" aria-expanded="false">批量导入<span class="chev">⌄</span></div>
     <div class="collapse-body">
       <div class="col">
         <div class="tiny muted">
@@ -94,7 +92,7 @@
           学号 / 学籍号 / 编号 · 小组 · 性别 · 职务 · 出生日期 / 生日 · 家庭住址 / 住址 ·<br />
           家长姓名 / 监护人 · 家长电话 / 家长联系方式 / 家长手机 · 与学生关系 / 关系 · 备用电话 · 备注
         </div>
-        <input id="excelFile" type="file" accept=".xlsx,.xls,.csv" class="input" style="padding-top:9px" />
+        <input id="excelFile" type="file" accept=".xlsx,.xls,.csv" class="input input-file" />
         <div class="row">
           <button id="btnImportExcel" class="btn btn-primary grow">导入花名册</button>
           <button id="btnDownloadTpl" class="btn btn-ghost">模板</button>
@@ -116,19 +114,36 @@
       <div class="label">积分记录</div>
       <div class="value num" id="statRecords">0</div>
     </div>
+    <div class="stat-card" id="statTodayCard">
+      <div class="label">今日记录</div>
+      <div class="value num" id="statToday">0</div>
+    </div>
+    <div class="stat-card" id="statGroupsCard">
+      <div class="label">小组数</div>
+      <div class="value num" id="statGroups">0</div>
+    </div>
   </div>
-  <nav class="view-tabs" id="viewTabs">
-    <button class="view-tab active" data-view="students">
+  <nav class="view-tabs" id="viewTabs" role="tablist" aria-label="视图切换">
+    <button class="view-tab active" data-view="students" role="tab" aria-selected="true">
       <i><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="14" r="5"/><path d="M9 4l1.5 5M15 4l-1.5 5"/><path d="M8 3h3M13 3h3"/></svg></i>学生榜
     </button>
-    <button class="view-tab" data-view="groups">
+    <button class="view-tab" data-view="groups" role="tab" aria-selected="false">
       <i><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6S14 16 14.6 19"/><path d="M16 5.6a3 3 0 0 1 0 5.8"/><path d="M17.5 14.6c1.7.6 2.8 2.1 3 4.4"/></svg></i>小组榜
     </button>
-    <button class="view-tab" data-view="seat">
+    <button class="view-tab" data-view="seat" role="tab" aria-selected="false">
       <i><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 4v7a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4"/><path d="M6 13v7"/><path d="M18 13v7"/><path d="M9 21h6"/></svg></i>积分排座
     </button>
-    <button class="view-tab" data-view="mall">
+    <button class="view-tab" data-view="mall" role="tab" aria-selected="false">
       <i><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="9" width="17" height="11" rx="2"/><path d="M2.8 9h18.4"/><path d="M12 9v11"/><path d="M12 9c-1.6 0-4.4-.6-4.4-2.8A2.2 2.2 0 0 1 12 5.6 2.2 2.2 0 0 1 16.4 6.2C16.4 8.4 13.6 9 12 9z"/></svg></i>积分商城
+    </button>
+    <button class="view-tab" data-view="history" role="tab" aria-selected="false">
+      <i><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></i>积分记录
+    </button>
+    <button class="view-tab" data-view="scores" role="tab" aria-selected="false">
+      <i><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg></i>成绩
+    </button>
+    <button class="view-tab hidden" data-view="members" role="tab" aria-selected="false">
+      <i><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-3.5 3.6-5.2 7-5.2s6 1.7 7 5.2"/></svg></i>成员管理
     </button>
   </nav>
 
@@ -143,7 +158,7 @@
       </div>
       <button id="btnBatch" class="btn btn-warn btn-block desk-inline">批量加减分</button>
     </div>
-    <div class="row hidden" style="margin-bottom:12px" id="rangeBar">
+    <div class=" mb-3" id="rangeBar">
       <div class="pill-group" id="rangeTabs">
         <button class="pill active" data-range="term">本期</button>
         <button class="pill" data-range="week">本周</button>
@@ -151,10 +166,10 @@
       </div>
     </div>
     <div class="table-card">
-      <div class="table-head">
-        <div class="center">排名</div><div>姓名</div><div>小组</div><div>职务</div><div>积分</div>
+      <div class="table-head" role="row">
+        <div class="center" role="columnheader">排名</div><div role="columnheader">姓名</div><div role="columnheader">小组</div><div class="col-position" role="columnheader">职务</div><div class="col-points" role="columnheader">积分</div><div role="columnheader"><span class="hidden">操作</span></div>
       </div>
-      <div id="studentList"></div>
+      <div id="studentList" role="rowgroup"></div>
     </div>
     <div class="pagination" id="studentPager"></div>
   </section>
@@ -167,7 +182,7 @@
         <button class="pill" data-sort="asc">低→高</button>
         <button class="pill" data-sort="time">按时间</button>
       </div>
-      <div class="tiny muted grow" id="groupSortHint" style="text-align:right">按总积分排序</div>
+      <div class="tiny muted grow right" id="groupSortHint">按总积分排序</div>
     </div>
     <div class="table-card">
       <div class="table-head group">
@@ -195,7 +210,7 @@
         <div class="seat-unseated" id="seatUnseated"></div>
       </div>
     </div>
-    <div class="row" style="margin-top:12px">
+    <div class=" mt-3">
       <button class="btn btn-primary grow" id="seatConfirmBtn">确认排座</button>
       <button class="btn btn-danger" id="seatClearBtn">清空</button>
     </div>
@@ -203,17 +218,17 @@
 
   <!-- 商城 -->
   <section class="panel hidden" id="viewMall">
-    <div class="collapse open" id="giftAddCollapse" style="margin:0 0 12px">
-      <div class="collapse-head" data-toggle="giftAddCollapse">添加礼物<span class="chev">⌄</span></div>
+    <div class="collapse open mb-3" id="giftAddCollapse">
+      <div class="collapse-head" data-toggle="giftAddCollapse" role="button" tabindex="0" aria-expanded="false">添加礼物<span class="chev">⌄</span></div>
       <div class="collapse-body">
         <div class="row">
           <input id="giftName" class="input grow" placeholder="礼物名称，如：免写作业一次" maxlength="20" />
-          <input id="giftCost" class="input" type="number" placeholder="所需积分" style="width:104px" min="1" />
+          <input id="giftCost" class="input field-sm" type="number" placeholder="所需积分" min="1" />
         </div>
-        <button id="btnAddGift" class="btn btn-primary btn-block" style="margin-top:8px">添加礼物</button>
+        <button id="btnAddGift" class=" mt-2">添加礼物</button>
       </div>
     </div>
-    <div class="between" style="margin-bottom:8px">
+    <div class=" mb-2">
       <div class="card-title">礼物列表（<span id="giftCount" class="num">0</span>）</div>
       <button class="btn btn-sm btn-ghost" id="btnGiftHistory">兑换记录</button>
     </div>
@@ -232,16 +247,16 @@
       </div>
       <button class="btn btn-sm btn-ghost" id="historyExportBtn">导出</button>
     </div>
-    <div class="row hidden" id="historyCustom" style="margin-bottom:8px">
+    <div class="row hidden" id="historyCustom" class="mb-2">
       <input type="date" id="rangeFrom" class="input" />
       <input type="date" id="rangeTo" class="input" />
     </div>
-    <div class="search-box" style="margin-bottom:12px"><input id="historySearchInput" placeholder="搜索学生姓名" /></div>
-    <div class="table-card" style="padding:4px 12px">
+    <div class=" mb-3"><input id="historySearchInput" placeholder="搜索学生姓名" /></div>
+    <div class="table-card is-padded">
       <div id="historyList"></div>
     </div>
     <div class="pagination" id="historyPager"></div>
-    <button class="btn btn-danger btn-block" id="btnClearHistory" style="margin-top:12px">清空全部积分记录</button>
+    <button class="btn btn-danger btn-block" id="btnClearHistory" class="mt-3">清空全部积分记录</button>
   </section>
 
   <!-- 成绩 -->
@@ -251,13 +266,13 @@
       <select class="select" id="examSelect" style="flex:1;min-width:140px"></select>
       <button class="btn btn-sm btn-danger" id="btnDeleteExam">删除</button>
     </div>
-    <div class="pill-group" id="scoreViewTabs" style="margin-bottom:12px">
+    <div class="pill-group mb-3" id="scoreViewTabs">
       <button class="pill active" data-view="student">学生个人</button>
       <button class="pill" data-view="group">小组成绩</button>
       <button class="pill" data-view="class">班级成绩</button>
     </div>
     <div id="scoreSummary"></div>
-    <div id="scoreBody" style="margin-top:12px"></div>
+    <div id="scoreBody" class="mt-3"></div>
     <div class="empty hidden" id="scoreEmpty">暂无成绩数据，点击「导入成绩」开始</div>
   </section>
 
@@ -268,15 +283,16 @@
       <button class="btn btn-sm btn-primary" id="btnAddMember">添加成员</button>
       <button class="btn btn-sm btn-ghost" id="btnMemberLimits">班干部额度</button>
     </div>
-    <div class="table-card" style="padding:4px 12px">
+    <div class="table-card is-padded">
       <div id="memberList"></div>
     </div>
-    <div class="tiny muted" style="margin-top:8px">
+    <div class=" mt-2">
       班主任可管理本班账号；手机号仅展示脱敏结果，完整号码由超级管理员维护。
     </div>
   </section>
   </div>
   </div>
+  </div><!-- /.app-container -->
 </div>
 
 <!-- ==================== 超级管理员 ==================== -->
@@ -289,30 +305,30 @@
     </div>
   </div>
 
-  <div class="admin-grid" id="superStats"></div>
+  <div class="stat-grid" id="superStats"></div>
 
-  <div class="card" style="margin-bottom:16px">
+  <div class=" mb-4">
     <div class="between">
       <div class="card-title">新建班级</div>
       <button class="btn btn-sm btn-primary" id="btnToggleClassForm">展开</button>
     </div>
-    <div id="classFormBody" class="hidden" style="margin-top:12px">
+    <div id="classFormBody" class=" mt-3">
       <div class="row wrap">
         <input id="clsName" class="input" placeholder="班级名称，如：三年级二班" style="flex:1;min-width:150px" />
         <input id="clsSchool" class="input" placeholder="学校（选填）" style="flex:1;min-width:150px" />
-        <input id="clsGrade" class="input" placeholder="年级（选填）" style="width:110px" />
+        <input id="clsGrade" class="input field-sm" placeholder="年级（选填）" />
       </div>
-      <div class="row wrap" style="margin-top:8px">
+      <div class=" mt-2">
         <input id="clsOwnerName" class="input" placeholder="班主任姓名" style="flex:1;min-width:130px" />
         <input id="clsOwnerPhone" class="input" placeholder="手机号" style="flex:1;min-width:130px" />
         <input id="clsOwnerUser" class="input" placeholder="登录账号" style="flex:1;min-width:130px" />
         <input id="clsOwnerPwd" class="input" placeholder="初始密码（≥6 位）" style="flex:1;min-width:130px" />
       </div>
-      <button id="btnCreateClass" class="btn btn-primary" style="margin-top:10px">创建班级与班主任</button>
+      <button id="btnCreateClass" class=" mt-2">创建班级与班主任</button>
     </div>
   </div>
 
-  <div class="pill-group" id="superTabs" style="margin-bottom:12px">
+  <div class="pill-group mb-3" id="superTabs">
     <button class="pill active" data-tab="classes">班级</button>
     <button class="pill" data-tab="accounts">全部账号</button>
     <button class="pill" data-tab="logs">操作日志</button>
@@ -320,39 +336,39 @@
     <button class="pill" data-tab="query">成绩查询</button>
   </div>
 
-  <div class="card" id="superClassesPanel" style="margin-bottom:16px">
-    <div class="between" style="margin-bottom:12px">
+  <div class="card" id="superClassesPanel" class="mb-4">
+    <div class=" mb-3">
       <div class="card-title">班级列表</div>
       <div class="row">
-        <input id="clsSearch" class="input" placeholder="搜索班级 / 学校 / 班主任" style="width:200px" />
+        <input id="clsSearch" class="input field-lg" placeholder="搜索班级 / 学校 / 班主任" />
         <button class="btn btn-sm btn-ghost" id="btnExportClasses">导出</button>
       </div>
     </div>
-    <div style="overflow-x:auto"><table class="admin-table" id="classTable"></table></div>
+    <div class="table-scroll"><table class="admin-table" id="classTable"></table></div>
     <div class="pagination" id="classPager"></div>
   </div>
 
-  <div class="card hidden" id="superAccountsPanel" style="margin-bottom:16px">
-    <div class="between" style="margin-bottom:12px">
+  <div class="card hidden" id="superAccountsPanel" class="mb-4">
+    <div class=" mb-3">
       <div class="card-title">全部账号</div>
       <div class="row wrap">
-        <input id="accSearch" class="input" placeholder="姓名 / 账号 / 手机号" style="width:170px" />
-        <select id="accRole" class="select" style="width:120px">
+        <input id="accSearch" class="input field-md" placeholder="姓名 / 账号 / 手机号" />
+        <select id="accRole" class="select field-sm">
           <option value="">全部角色</option>
           <option value="owner">班主任</option>
           <option value="teacher">老师</option>
           <option value="cadre">班干部</option>
         </select>
-        <select id="accClass" class="select" style="width:150px"><option value="">全部班级</option></select>
+        <select id="accClass" class="select field-md"><option value="">全部班级</option></select>
       </div>
     </div>
-    <div style="overflow-x:auto"><table class="admin-table" id="accTable"></table></div>
+    <div class="table-scroll"><table class="admin-table" id="accTable"></table></div>
     <div class="pagination" id="accPager"></div>
   </div>
 
   <!-- ============ 操作日志 ============ -->
-  <div class="card hidden" id="superLogsPanel" style="margin-bottom:16px">
-    <div class="between" style="margin-bottom:12px">
+  <div class="card hidden" id="superLogsPanel" class="mb-4">
+    <div class=" mb-3">
       <div class="card-title">全量操作日志</div>
       <div class="row wrap">
         <button class="btn btn-sm btn-ghost" id="btnLogRefresh">刷新</button>
@@ -361,23 +377,23 @@
       </div>
     </div>
 
-    <div class="pill-group" id="logRangeTabs" style="margin-bottom:10px">
+    <div class="pill-group mb-2" id="logRangeTabs">
       <button class="pill active" data-range="1">今天</button>
       <button class="pill" data-range="7">近 7 天</button>
       <button class="pill" data-range="30">近 30 天</button>
       <button class="pill" data-range="0">全部</button>
     </div>
 
-    <div class="row wrap" style="margin-bottom:10px">
-      <select id="logClass" class="select" style="width:160px"><option value="">全部班级</option></select>
-      <select id="logRole" class="select" style="width:130px">
+    <div class=" mb-2">
+      <select id="logClass" class="select field-md"><option value="">全部班级</option></select>
+      <select id="logRole" class="select field-sm">
         <option value="">全部角色</option>
         <option value="super_admin">超级管理员</option>
         <option value="owner">班主任</option>
         <option value="teacher">老师</option>
         <option value="cadre">班干部</option>
       </select>
-      <select id="logModule" class="select" style="width:130px">
+      <select id="logModule" class="select field-sm">
         <option value="">全部模块</option>
         <option value="class">班级业务</option>
         <option value="members">成员管理</option>
@@ -386,7 +402,7 @@
         <option value="backup">备份恢复</option>
         <option value="query">对外查询</option>
       </select>
-      <select id="logResult" class="select" style="width:120px">
+      <select id="logResult" class="select field-sm">
         <option value="">全部结果</option>
         <option value="success">成功</option>
         <option value="failed">失败 / 被拒绝</option>
@@ -394,32 +410,32 @@
       <input id="logKeyword" class="input grow" placeholder="搜索姓名 / 摘要 / 动作关键词" style="min-width:160px" />
     </div>
 
-    <div class="tiny muted" style="margin-bottom:8px">
+    <div class=" mb-2">
       共 <b id="logTotal" class="num">0</b> 条。点击任意一行可查看变更前后快照。
     </div>
-    <div style="overflow-x:auto"><table class="admin-table" id="logTable"></table></div>
+    <div class="table-scroll"><table class="admin-table" id="logTable"></table></div>
     <div class="pagination" id="logPager"></div>
   </div>
 
   <!-- ============ 数据备份 ============ -->
-  <div class="card hidden" id="superBackupPanel" style="margin-bottom:16px">
-    <div class="card-title" style="margin-bottom:10px">导出备份</div>
-    <div class="row wrap" style="margin-bottom:10px">
+  <div class="card hidden" id="superBackupPanel" class="mb-4">
+    <div class=" mb-2">导出备份</div>
+    <div class=" mb-2">
       <select id="backupClass" class="select grow" style="min-width:180px"><option value="">选择一个班级</option></select>
       <button class="btn btn-sm btn-primary" id="btnBackupClass">导出班级备份</button>
       <button class="btn btn-sm btn-ghost" id="btnBackupPlatform">导出平台全量备份</button>
     </div>
-    <div class="tiny muted" style="margin-bottom:14px">
+    <div class=" mb-3">
       班级备份含：班级资料、成员、学生档案、积分记录、快捷规则、礼物、兑换记录、考试与成绩、座位表；<br />
       平台全量备份含：全部班级 + 全部账号档案 + 回收站快照 + 最近 2 万条操作日志。<br />
       <b>出于安全，备份文件不包含任何登录密码</b>，导入后相关账号需由超级管理员重新设置密码。
     </div>
 
-    <div class="card-title" style="margin-bottom:10px">导入备份</div>
+    <div class=" mb-2">导入备份</div>
     <div class="col">
-      <input id="backupFile" type="file" accept=".json,application/json" class="input" style="padding-top:9px" />
+      <input id="backupFile" type="file" accept=".json,application/json" class="input input-file" />
       <div class="row wrap">
-        <select id="backupMode" class="select" style="width:170px">
+        <select id="backupMode" class="select field-md">
           <option value="create">恢复为新班级</option>
           <option value="replace">覆盖现有班级</option>
         </select>
@@ -433,10 +449,10 @@
   </div>
 
   <!-- ============ 成绩对外查询 ============ -->
-  <div class="card hidden" id="superQueryPanel" style="margin-bottom:16px">
-    <div class="switch-card" style="margin-bottom:14px">
+  <div class="card hidden" id="superQueryPanel" class="mb-4">
+    <div class=" mb-3">
       <div class="grow">
-        <div class="card-title" style="margin-bottom:2px">成绩自助查询 · 总开关</div>
+        <div class="card-title mb-1">成绩自助查询 · 总开关</div>
         <div class="tiny muted">关闭后：登录页不再显示查询入口，家长公开查询页也无法访问；教师端与班级工作台完全不受影响。各班级的口令本身仍保留，重新开启即可恢复。</div>
       </div>
       <label class="switch" title="超级查询总开关">
@@ -445,23 +461,23 @@
       </label>
     </div>
 
-    <div class="card-title" style="margin-bottom:10px">生成对外查询口令</div>
-    <div class="row wrap" style="margin-bottom:8px">
+    <div class=" mb-2">生成对外查询口令</div>
+    <div class=" mb-2">
       <select id="qtClass" class="select grow" style="min-width:180px"><option value="">选择班级</option></select>
       <input id="qtName" class="input grow" placeholder="用途备注，如：八年级期中家长会" maxlength="40" style="min-width:170px" />
     </div>
-    <div class="row wrap" style="margin-bottom:10px">
-      <select id="qtScope" class="select" style="width:150px">
+    <div class=" mb-2">
+      <select id="qtScope" class="select field-md">
         <option value="scores">仅成绩</option>
         <option value="points">仅积分</option>
         <option value="all">成绩 + 积分</option>
       </select>
-      <select id="qtMode" class="select" style="width:190px">
+      <select id="qtMode" class="select field-lg">
         <option value="name_no">姓名 + 学号</option>
         <option value="phone">姓名 + 家长手机后 4 位</option>
         <option value="none">仅姓名</option>
       </select>
-      <select id="qtDays" class="select" style="width:130px">
+      <select id="qtDays" class="select field-sm">
         <option value="0">长期有效</option>
         <option value="7">7 天</option>
         <option value="30">30 天</option>
@@ -469,25 +485,25 @@
       </select>
       <button class="btn btn-primary" id="btnQtCreate">生成口令</button>
     </div>
-    <div class="tiny muted" style="margin-bottom:14px">
+    <div class=" mb-3">
       把「查询地址 + 口令」发给家长，家长自助查询，<b>无需注册登录</b>；一个口令只能查到命中的那一名学生，
       家长手机号一律脱敏展示。口令可随时停用或删除，停用后链接立即失效。
     </div>
 
-    <div class="between" style="margin-bottom:8px">
+    <div class=" mb-2">
       <div class="card-title">已有口令（<span id="qtCount" class="num">0</span>）</div>
       <button class="btn btn-sm btn-ghost" id="btnQtRefresh">刷新</button>
     </div>
-    <div style="overflow-x:auto"><table class="admin-table" id="qtTable"></table></div>
+    <div class="table-scroll"><table class="admin-table" id="qtTable"></table></div>
   </div>
 
-  <div class="card" id="recycleCard" style="margin-bottom:16px">
-    <div class="card-title" style="margin-bottom:8px">回收站</div>
+  <div class="card" id="recycleCard" class="mb-4">
+    <div class=" mb-2">回收站</div>
     <div id="recycleBody"></div>
   </div>
 </div>
 
-<div class="toast-wrap" id="toastWrap"></div>
+<div class="toast-wrap" id="toastWrap" role="status" aria-live="polite"></div>
 <div id="modalRoot"></div>
 
 <script type="module" src="./js/app.js"></script>
