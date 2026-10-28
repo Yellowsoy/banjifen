@@ -411,7 +411,7 @@ npm test   # 拉起独立实例，覆盖 74 项集成测试
 │  ├─ settings.html            # 独立设置页
 │  ├─ query.html               # 家长免登录成绩查询页
 │  ├─ favicon.svg              # ★ 站点图标（四页共用，避免浏览器默认图标缺失）
-│  ├─ css/design-system.css    # 设计系统 v2（4pt 间距 + 统一列模板 + 响应式）
+│  ├─ css/design-system.css    # 设计系统 v2（Playful/Friendly 调性 + 4pt 间距 + 语义配色 + 统一列模板 + 响应式）
 │  └─ js/                      # api · ui · store · app · class-* · members · super-app · query · settings
 ├─ cloud-functions/api/[[default]].js   # EdgeOne 云函数入口：/api/* → Express
 ├─ .github/workflows/warmup.yml  # ★ 定时预热（每小时 ping /api/cron/warmup，规避 EdgeOne cron 最小间隔 1 天的限制）
@@ -562,12 +562,13 @@ server/src/index.js → main()
 
 ## 界面规范（视觉对齐）
 
-设计系统写在 `public/css/design-system.css`，四条硬规则：
+设计系统写在 `public/css/design-system.css`（Design System v2，调性 **Playful / Friendly**——圆润、明快、亲和，面向中小学师生）。所有视觉常量走 CSS 变量，核心约定：
 
-1. **间距只用 4pt 刻度**（4/8/12/16/24/32/48），不出现一次性数值；卡片内边距统一 `--pad-card`，页面左右统一 `--gutter`。
-2. **表格共用一套列模板**：`--cols-student / --cols-group / --cols-score` 同时作用于表头与数据行，保证纵向严格同列；只在断点处重定义，不在行内微调。
-3. **数字右对齐 + `tabular-nums`**：积分、人数、均分、日期一律等宽数字并右对齐；文本左对齐。
-4. **层级靠有限刻度**：圆角 8/12/16/20，阴影 3 档，z-index 语义化（sticky → dropdown → backdrop → modal → toast）。
+1. **间距只用 4pt 刻度**：`--s-1`…`--s-16` 覆盖 4 / 8 / 12 / 16 / 20 / 24 / 28 / 32 / 40 / 48 / 64px，不出现一次性数值；卡片内边距统一 `--pad-card`、页面左右统一 `--gutter`，断点处只改这两个变量。
+2. **配色统一走语义变量**：主色冷蓝 `--c-primary:#3B6FF5`（信任/秩序）、强调珊瑚 `--c-accent:#FF6B5B`（关键动作/活力），辅以绿/琥珀/玫红状态色；背景 `--c-bg:#F5F7FB`、卡片 `--c-surface:#FFF`、正文 `--c-ink:#1A2233`。
+3. **表格共用一套列模板**：`--cols-student / --cols-group / --cols-score` 同时作用于表头与数据行，保证纵向严格同列；只在断点处重定义（1024 / 1200px），不在行内微调。
+4. **数字右对齐 + `tabular-nums`**：积分、人数、均分、日期一律等宽数字并右对齐（`.num`）；文本左对齐。
+5. **层级与形状靠有限刻度**：圆角 6 / 10 / 14 / 20 / 28px（外加胶囊 999px），阴影 3 档（`--shadow-1 / -2 / -3`），z-index 语义化（sticky 10 → dropdown 20 → backdrop 40 → modal 50 → toast 60）；视觉记忆点为圆角胶囊按钮 + 柔和渐变卡片 + 明快的名次徽章。
 
 配套的克制原则：操作按钮描边不实心（只有加减分出色）、空状态一句话、卡片不嵌套、图标统一线性 SVG（不依赖 emoji 字体）。
 
