@@ -79,8 +79,8 @@ async def owner_flow(page, label):
     await page.wait_for_timeout(PAGE_WAIT)
     await snap(page, f"{OUT}/{label}/{NAMES[5]}.png")
 
-    # 成绩分析
-    await page.locator("#btnScores").click(timeout=4000)
+    # 成绩分析（点击「成绩」视图标签）
+    await page.locator('[data-view="scores"]').click(timeout=4000)
     await page.wait_for_timeout(1000)
     await snap(page, f"{OUT}/{label}/{NAMES[6]}.png")
 
