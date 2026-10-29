@@ -21,6 +21,11 @@ const overview = asyncHandler(async (req, res) => {
   res.json(service.overview());
 });
 
+/** 站点访问统计（自建，超管可见） */
+const visitStats = asyncHandler(async (req, res) => {
+  res.json(require('../stats/visit.service').summary());
+});
+
 const listClasses = asyncHandler(async (req, res) => {
   res.json(service.listClasses(parse(classQuery, req.query)));
 });
@@ -261,6 +266,7 @@ const exportClasses = asyncHandler(async (req, res) => {
 
 module.exports = {
   overview,
+  visitStats,
   listClasses,
   createClass,
   updateClass,

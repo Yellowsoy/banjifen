@@ -648,9 +648,106 @@ async function loadQueryTokens() {
     </tbody>`;
 }
 
+/* ================= 站点访问统计 ================= */
+const fmtNum = (n) => Number(n || 0).toLocaleString('zh-CN');
+
+/** 把秒级时间戳渲染成「x 分钟前」 */
+function fmtAgo(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  if (diff < 60 * 1000) return '刚刚更新';
+  if (diff < 60 * 60 * 1000) return `${Math.floor(diff / 60000)} 分钟前更新`;
+  if (diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / 3600000)} 小时前更新`;
+  return fmtDateTime(ts);
+}
+
+async function loadVisitStats() {
+  const metrics = $('#visitMetrics');
+  const chart = $('#visitChart');
+  if (!metrics || !chart) return;
+  try {
+    const s = await api.get('/super/visit-stats');
+
+    // 顶部副标题
+    $('#visitSub').textContent = s.uvTotal
+      ? `统计自本系统上线以来 · ${fmtAgo(s.updatedAt)}`
+      : '暂无访问数据：打开首页或家长查询页后即可统计（约 1 分钟内出数）';
+
+    // 四张指标卡
+    const delta = s.growth;
+    const deltaHtml = delta === null
+      ? '<span class="m-foot">昨日无数据</span>'
+      : `<span class="m-foot">较昨日 <span class="m-delta ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '+' : ''}${delta}%</span></span>`;
+    metrics.innerHTML = `
+      <div class="visit-metric">
+        <div class="m-label">总访问量 PV</div>
+        <div class="m-value">${fmtNum(s.pvTotal)}</div>
+        <div class="m-foot">页面浏览累计</div>
+      </div>
+      <div class="visit-metric accent">
+        <div class="m-label">独立访客 UV</div>
+        <div class="m-value">${fmtNum(s.uvTotal)}</div>
+        <div class="m-foot">按天去重累计</div>
+      </div>
+      <div class="visit-metric teal">
+        <div class="m-label"><i class="visit-live"></i>当前在线</div>
+        <div class="m-value">${fmtNum(s.online)}</div>
+        <div class="m-foot">近 5 分钟活跃</div>
+      </div>
+      <div class="visit-metric amber">
+        <div class="m-label">今日访客</div>
+        <div class="m-value">${fmtNum(s.uvToday)}</div>
+        ${deltaHtml}
+      </div>`;
+
+    // 近 7 天柱状趋势：PV 作背景浅色柱，UV 作前景实心柱
+    const max = Math.max(1, ...s.trend.map((d) => Math.max(d.pv, d.uv)));
+    const todayKey = s.trend[s.trend.length - 1]?.day;
+    chart.innerHTML = s.trend
+      .map((d) => {
+        const pvH = Math.round((d.pv / max) * 100);
+        const uvH = Math.round((d.uv / max) * 100);
+        return `<div class="visit-bar ${d.day === todayKey ? 'is-today' : ''}" title="${d.day}：PV ${d.pv} / UV ${d.uv}">
+            <div class="bars">
+              <span class="bar-val">${d.uv}/${d.pv}</span>
+              <i class="bar-pv" style="height:${pvH}%"></i>
+              <i class="bar-uv" style="height:${uvH}%"></i>
+            </div>
+            <span class="bar-day">${d.label}</span>
+          </div>`;
+      })
+      .join('');
+
+    // 热门页面（按累计 PV）
+    const top = $('#visitTop');
+    if (!s.topPages || !s.topPages.length) {
+      top.innerHTML = '';
+    } else {
+      const topMax = Math.max(1, ...s.topPages.map((p) => p.pv));
+      top.innerHTML = `
+        <div class="visit-top-title">热门页面</div>
+        <div class="visit-top-list">${s.topPages
+          .map((p) => `<div class="visit-top-row">
+              <span class="p-name" title="${escapeHtml(p.path)}">${escapeHtml(p.path)}</span>
+              <span class="p-track"><i class="p-fill" style="width:${Math.round((p.pv / topMax) * 100)}%"></i></span>
+              <span class="p-num">${fmtNum(p.pv)}</span>
+            </div>`)
+          .join('')}</div>`;
+    }
+  } catch (err) {
+    // 统计失败不影响超管其他功能
+    $('#visitSub').textContent = '访问统计读取失败，可稍后点「刷新」重试';
+    metrics.innerHTML = '';
+    chart.innerHTML = `<div class="visit-empty">${escapeHtml(err.message || '加载失败')}</div>`;
+  }
+}
+
 /* ================= 绑定 ================= */
 export async function mountSuperApp({ logout }) {
   await Promise.all([loadStats(), loadClasses(), loadAccounts(), loadRecycle(), loadLogs()]);
+  loadVisitStats();
+
+  $('#btnVisitRefresh')?.addEventListener('click', loadVisitStats);
 
   $('#btnSuperLogout').onclick = logout;
 

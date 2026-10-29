@@ -37,11 +37,13 @@ function createApp({ pre = [], spaFallback } = {}) {
       'Content-Security-Policy',
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline'",
+        // 51.LA 访问统计：SDK 与动态加载的子脚本
+        "script-src 'self' 'unsafe-inline' https://sdk.51.la",
         "style-src 'self' 'unsafe-inline'",
-        'img-src \'self\' data: blob:',
+        "img-src 'self' data: blob: https://*.51.la",
         "font-src 'self' data:",
-        "connect-src 'self'",
+        // 51.LA 数据上报与配置拉取
+        "connect-src 'self' https://*.51.la",
         "object-src 'none'",
         "base-uri 'self'",
         "frame-ancestors 'self'",
@@ -72,6 +74,12 @@ function createApp({ pre = [], spaFallback } = {}) {
   app.use(cookieParser());
 
   app.use('/uploads', express.static(config.uploadDir, { maxAge: '7d', index: false }));
+  // 站点访问统计：必须在静态资源之前，才能捕获到 HTML 文档请求
+  const visitStats = require('./modules/stats/visit.service');
+  app.use((req, res, next) => {
+    visitStats.record(req);
+    next();
+  });
   app.use(express.static(config.publicDir, { maxAge: config.isProd ? '1h' : 0, index: 'index.html' }));
 
   app.use('/api/auth', require('./modules/auth/auth.routes'));

@@ -12,6 +12,7 @@ router.use(requireAuth('super_admin'));
 router.use(failureTrail('super'));
 
 router.get('/overview', controller.overview);
+router.get('/visit-stats', controller.visitStats);
 router.get('/classes', controller.listClasses);
 router.get('/classes/export.csv', controller.exportClasses);
 router.get('/classes/deleted/list', controller.deletedClasses);

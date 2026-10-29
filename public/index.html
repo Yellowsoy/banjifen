@@ -307,6 +307,32 @@
 
   <div class="stat-grid" id="superStats"></div>
 
+  <!-- 站点访问统计（自建口径，数据来自 /api/super/visit-stats） -->
+  <section class="visit-panel" id="visitPanel" aria-labelledby="visitPanelTitle">
+    <div class="visit-head">
+      <div class="visit-head-main">
+        <div class="visit-title" id="visitPanelTitle">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+          站点访问统计
+        </div>
+        <div class="visit-sub" id="visitSub">正在读取数据…</div>
+      </div>
+      <button class="btn btn-sm btn-ghost" id="btnVisitRefresh" type="button" aria-label="刷新访问统计">刷新</button>
+    </div>
+
+    <div class="visit-metrics" id="visitMetrics"></div>
+
+    <div class="visit-chart-wrap">
+      <div class="visit-chart-head">
+        <span class="visit-chart-title">近 7 天访客趋势</span>
+        <span class="visit-legend"><i class="dot uv"></i>访客 UV<i class="dot pv"></i>访问量 PV</span>
+      </div>
+      <div class="visit-chart" id="visitChart" role="img" aria-label="近 7 天访客趋势图"></div>
+    </div>
+
+    <div class="visit-top" id="visitTop"></div>
+  </section>
+
   <div class=" mb-4">
     <div class="between">
       <div class="card-title">新建班级</div>
@@ -507,5 +533,32 @@
 <div id="modalRoot"></div>
 
 <script type="module" src="./js/app.js"></script>
+
+<!-- 51.LA 访问统计埋点：仅超管页面加载（defer 不阻塞渲染；id 与 ck 见 51.LA 后台） -->
+<script>
+  window.__LA_ID = '3Rf1YuvLmClalplI';
+  // 仅在已登录超管、且页面显示超管后台时才注入，避免给家长/学生端增加加载负担
+  (function loadLaWhenSuper() {
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries += 1;
+      var superScreen = document.getElementById('superScreen');
+      var visible = superScreen && !superScreen.classList.contains('hidden');
+      if (visible || tries > 60) {
+        clearInterval(timer);
+        if (!visible) return; // 30 秒内没进超管后台就不加载
+        var s = document.createElement('script');
+        s.charset = 'UTF-8';
+        s.src = 'https://sdk.51.la/js-sdk-pro.min.js';
+        s.onload = function () {
+          if (window.LA && window.LA.init) {
+            window.LA.init({ id: window.__LA_ID, ck: window.__LA_ID, autoTrack: true, hashMode: true });
+          }
+        };
+        document.head.appendChild(s);
+      }
+    }, 500);
+  })();
+</script>
 </body>
 </html>
