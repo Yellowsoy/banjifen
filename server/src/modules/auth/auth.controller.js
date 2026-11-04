@@ -51,6 +51,7 @@ const ssoLogin = asyncHandler(async (req, res) => {
   try {
     result = service.loginBySsoEmail({
       email: r.user && r.user.email,
+      ssoUser: r.user || {},
       userAgent: req.get('user-agent') || '',
     });
   } catch (err) {

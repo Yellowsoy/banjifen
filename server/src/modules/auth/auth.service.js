@@ -129,7 +129,7 @@ function changePassword(accountId, { oldPassword, newPassword }) {
  *   3. 全站只有一个超级管理员时直接落到该账号（单人部署兜底，绑定关系确定且可预期）
  * 都匹配不上则拒绝，不做自动建号——本站角色/班级权限敏感，不能凭空发权限。
  */
-function loginBySsoEmail({ email, userAgent = '' }) {
+function loginBySsoEmail({ email, ssoUser = null, userAgent = '' }) {
   const key = String(email || '').trim().toLowerCase();
   if (!key) throw new BusinessError('登录中心没有返回邮箱，无法匹配本站账号', 'SSO_NO_EMAIL');
   const short = key.includes('@') ? key.split('@')[0] : key;
@@ -159,6 +159,15 @@ function loginBySsoEmail({ email, userAgent = '' }) {
   if (account.classId) {
     const cls = db.get('SELECT id, deleted_at AS deletedAt FROM classes WHERE id = ?', [account.classId]);
     if (!cls || cls.deletedAt) throw new BusinessError('所属班级已被删除，请联系超级管理员', 'CLASS_DELETED');
+  }
+
+  // 昵称 / 手机号以 SSO 为准：每次统一身份认证登录都同步回本站账号
+  if (ssoUser) {
+    const name = String(ssoUser.nickname || '').trim();
+    const phone = String(ssoUser.phone || '').trim();
+    if (name) db.run('UPDATE accounts SET name = ? WHERE id = ?', [name, account.id]);
+    if (phone) db.run('UPDATE accounts SET phone = ? WHERE id = ?', [phone, account.id]);
+    if (name || phone) account = repo.findById(account.id) || account;
   }
 
   repo.touchLogin(account.id);

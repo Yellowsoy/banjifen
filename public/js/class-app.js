@@ -18,7 +18,7 @@ export async function refreshOverview() {
   const cls = data.class || {};
   $('#appTitle').textContent = cls.name || '班级积分管理';
   $('#appRole').textContent = roleLabel();
-  $('#appAccount').textContent = data.account ? data.account.username : '';
+  $('#appAccount').textContent = data.account ? (data.account.name || data.account.username) : '';
   const badge = $('#appBadge');
   if (cls.badge) badge.innerHTML = `<img src="${escapeHtml(cls.badge)}" alt="班级徽章" />`;
   else badge.textContent = '积';
