@@ -4,7 +4,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Yellowsoy/banjifen?style=flat-square&logo=apache&logoColor=white" alt="License"></a>
   <img src="https://img.shields.io/github/actions/workflow/status/Yellowsoy/banjifen/warmup.yml?label=warmup&style=flat-square&logo=githubactions&logoColor=white" alt="Warmup">
   <img src="https://img.shields.io/badge/tests-74%20passed-brightgreen?style=flat-square&logo=jest&logoColor=white" alt="Tests">
-  <img src="https://img.shields.io/badge/version-2.3-0098FF?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.4-0098FF?style=flat-square" alt="Version">
 </p>
 
 <p align="center">
