@@ -41,6 +41,12 @@ const ssoLogin = asyncHandler(async (req, res) => {
     return backToLogin(msg);
   }
 
+  // 站点管理员身份由 SSO 统一授予：内置全局 admin，或本站专属 admin-bj
+  const roles = Array.isArray(r.roles) ? r.roles : [];
+  if (!roles.includes('admin') && !roles.includes('admin-bj')) {
+    return backToLogin('该账号没有本站管理员权限，请联系管理员在黄豆侠后台授予 admin 或 admin-bj 角色');
+  }
+
   let result;
   try {
     result = service.loginBySsoEmail({

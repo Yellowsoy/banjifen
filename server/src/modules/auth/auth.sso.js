@@ -30,7 +30,7 @@ async function verify(req) {
     if (!res.ok || !data || !data.valid) {
       return { ok: false, code: (data && data.error) || 'invalid_session' };
     }
-    return { ok: true, user: data.user || {} };
+    return { ok: true, user: data.user || {}, roles: Array.isArray(data.roles) ? data.roles : [] };
   } catch (err) {
     return { ok: false, code: 'sso_unreachable' };
   }
