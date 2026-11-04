@@ -4,7 +4,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Yellowsoy/banjifen?style=flat-square&logo=apache&logoColor=white" alt="License"></a>
   <img src="https://img.shields.io/github/actions/workflow/status/Yellowsoy/banjifen/warmup.yml?label=warmup&style=flat-square&logo=githubactions&logoColor=white" alt="Warmup">
   <img src="https://img.shields.io/badge/tests-74%20passed-brightgreen?style=flat-square&logo=jest&logoColor=white" alt="Tests">
-  <img src="https://img.shields.io/badge/version-2.2-0098FF?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.3-0098FF?style=flat-square" alt="Version">
 </p>
 
 <p align="center">
@@ -53,6 +53,7 @@ v2.1 新增三大能力：
 | 未登录时 | 302 回 `/login.html?sso_error=尚未登录黄豆侠` |
 | 回调 | 把父域 Cookie `sso_token` 转给登录中心 `GET /api/verify-token`，通过后签发本站会话并 302 到 `/` |
 | 账号映射 | `username` = SSO 邮箱或其前缀；**全站只有一个超级管理员时自动绑定**；都匹配不上则拒绝 |
+| **权限要求** | **管理员身份由 SSO 决定**：`roles` 必须含 `admin` 或 `admin-bj`，否则回登录页报错；在 SSO 后台「用户 → 角色」中授予/收回 |
 | 为什么不自动建号 | 角色绑定班级与数据权限，SSO 只证明身份，不能代替业务授权 |
 | 代码位置 | `server/src/modules/auth/auth.sso.js`、`auth.controller.js`（`ssoLogin`）、`auth.service.js`（`loginBySsoEmail`） |
 
