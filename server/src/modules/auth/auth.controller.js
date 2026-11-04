@@ -23,7 +23,7 @@ function present(res, result) {
 }
 
 /**
- * GET /api/auth/sso —— 黄豆侠登录回调
+ * GET /api/auth/sso —— 统一身份认证回调
  * 浏览器从登录中心跳回来，带着 sso_token Cookie；校验通过后直接下发本站会话并跳首页。
  * 失败一律 302 回登录页并带 sso_error，避免用户停在空白 JSON 上。
  */
@@ -34,17 +34,17 @@ const ssoLogin = asyncHandler(async (req, res) => {
   if (!r.ok) {
     const msg =
       r.code === 'no_session'
-        ? '尚未登录黄豆侠'
+        ? '尚未通过统一身份认证'
         : r.code === 'sso_unreachable'
           ? '无法连接登录中心，请稍后重试'
-          : '黄豆侠会话已失效，请重新登录';
+          : '统一身份认证会话已失效，请重新登录';
     return backToLogin(msg);
   }
 
   // 站点管理员身份由 SSO 统一授予：内置全局 admin，或本站专属 admin-bj
   const roles = Array.isArray(r.roles) ? r.roles : [];
   if (!roles.includes('admin') && !roles.includes('admin-bj')) {
-    return backToLogin('该账号没有本站管理员权限，请联系管理员在黄豆侠后台授予 admin 或 admin-bj 角色');
+    return backToLogin('该账号没有本站管理员权限，请联系管理员在统一管理后台授予 admin 或 admin-bj 角色');
   }
 
   let result;
@@ -58,7 +58,7 @@ const ssoLogin = asyncHandler(async (req, res) => {
   }
 
   setAuthCookies(res, result);
-  req.log.info('黄豆侠登录成功', { accountId: result.account.id, matchedBy: result.matchedBy });
+  req.log.info('统一身份认证登录成功', { accountId: result.account.id, matchedBy: result.matchedBy });
   const { accessToken, refreshToken, matchedBy, ...rest } = result;
   return res.redirect(302, '/');
 });

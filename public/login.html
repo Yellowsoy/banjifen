@@ -43,7 +43,8 @@
         <div id="loginErr" class="err-text hidden"></div>
         <button id="btnLogin" class="btn btn-primary btn-block">登 录</button>
         <div class="sso-split"><span>或</span></div>
-        <a class="btn btn-block" href="/api/auth/sso" style="text-decoration:none">用黄豆侠账号登录</a>
+        <a class="btn btn-block" href="/api/auth/sso" style="text-decoration:none">统一身份认证</a>
+        <p style="margin:8px 0 0;text-align:center;font-size:12px;color:var(--c-ink-2)">SSO 单点登录 · 一次登录，访问已授权站点</p>
       </div>
 
       <div class="tips-box">
@@ -154,7 +155,7 @@
     }
   }
 
-  /* 黄豆侠回调失败时，服务端会重定向回 /login.html?sso_error=... */
+  /* 统一身份认证回调失败时，服务端会重定向回 /login.html?sso_error=... */
   (function showSsoError() {
     const msg = new URLSearchParams(location.search).get('sso_error');
     if (!msg) return;

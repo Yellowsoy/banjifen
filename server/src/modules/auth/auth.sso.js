@@ -1,6 +1,6 @@
 'use strict';
 /**
- * 黄豆侠 SSO（sso.5166966.xyz）会话校验
+ * 统一身份认证（SSO 单点登录）会话校验
  *
  * 本站与登录中心同属 5166966.xyz 主域，中心下发的 sso_token 是
  * Domain=.5166966.xyz 的 HttpOnly Cookie，浏览器访问 bj.5166966.xyz 会自动带上，

@@ -121,7 +121,7 @@ function changePassword(accountId, { oldPassword, newPassword }) {
 }
 
 /**
- * 黄豆侠（SSO）登录：按登录中心返回的邮箱匹配本站账号
+ * 统一身份认证（SSO）登录：按登录中心返回的邮箱匹配本站账号
  *
  * 本站账号只有 username（手机号或自定义账号），没有邮箱字段，所以匹配顺序为：
  *   1. username === 邮箱
@@ -150,7 +150,7 @@ function loginBySsoEmail({ email, userAgent = '' }) {
 
   if (!account) {
     throw new BusinessError(
-      '该黄豆侠账号尚未绑定本站账号：请先用账号密码登录，或联系超级管理员把用户名改成该邮箱',
+      '该账号尚未绑定本站账号：请先用账号密码登录，或联系超级管理员把用户名改成该邮箱',
       'SSO_NOT_BOUND'
     );
   }
