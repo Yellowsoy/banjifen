@@ -4,7 +4,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Yellowsoy/banjifen?style=flat-square&logo=apache&logoColor=white" alt="License"></a>
   <img src="https://img.shields.io/github/actions/workflow/status/Yellowsoy/banjifen/warmup.yml?label=warmup&style=flat-square&logo=githubactions&logoColor=white" alt="Warmup">
   <img src="https://img.shields.io/badge/tests-74%20passed-brightgreen?style=flat-square&logo=jest&logoColor=white" alt="Tests">
-  <img src="https://img.shields.io/badge/version-2.1-0098FF?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/version-2.2-0098FF?style=flat-square" alt="Version">
 </p>
 
 <p align="center">
@@ -40,6 +40,21 @@ v2.1 新增三大能力：
 > 📄 开源协议：[Apache License 2.0](LICENSE) —— 允许商用与闭源二次分发，仅需保留版权声明。
 
 > 以上截图使用 **虚构演示数据**（示例学校、化名学生、138xxxx 测试手机号），由仓库内 `scripts/seed-demo.js` 生成，可复现。
+
+---
+
+## 黄豆侠 SSO 登录（v2.2）
+
+登录页在账号密码之外增加「用黄豆侠账号登录」，与 <https://sso.5166966.xyz> 共用一次登录；登录后仍是本站自己的会话（`bj_at` / `bj_rt`），角色与班级权限完全按本站账号数据走。
+
+| 项 | 说明 |
+|---|---|
+| 入口 | `public/login.html` 的「或 · 用黄豆侠账号登录」→ `GET /api/auth/sso` |
+| 未登录时 | 302 回 `/login.html?sso_error=尚未登录黄豆侠` |
+| 回调 | 把父域 Cookie `sso_token` 转给登录中心 `GET /api/verify-token`，通过后签发本站会话并 302 到 `/` |
+| 账号映射 | `username` = SSO 邮箱或其前缀；**全站只有一个超级管理员时自动绑定**；都匹配不上则拒绝 |
+| 为什么不自动建号 | 角色绑定班级与数据权限，SSO 只证明身份，不能代替业务授权 |
+| 代码位置 | `server/src/modules/auth/auth.sso.js`、`auth.controller.js`（`ssoLogin`）、`auth.service.js`（`loginBySsoEmail`） |
 
 ---
 

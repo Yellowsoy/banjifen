@@ -1,6 +1,6 @@
 {
   "name": "banjifen-clone",
-  "version": "1.0.0",
+  "version": "2.2.0",
   "private": true,
   "description": "班级积分管理 - 全栈复刻版（Node.js + Express + SQLite/sql.js + 原生前端）",
   "license": "Apache-2.0",
