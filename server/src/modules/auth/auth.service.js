@@ -120,8 +120,55 @@ function changePassword(accountId, { oldPassword, newPassword }) {
   repo.revokeAllForAccount(accountId);
 }
 
+/**
+ * 黄豆侠（SSO）登录：按登录中心返回的邮箱匹配本站账号
+ *
+ * 本站账号只有 username（手机号或自定义账号），没有邮箱字段，所以匹配顺序为：
+ *   1. username === 邮箱
+ *   2. username === 邮箱前缀（rhd100@qq.com → rhd100）
+ *   3. 全站只有一个超级管理员时直接落到该账号（单人部署兜底，绑定关系确定且可预期）
+ * 都匹配不上则拒绝，不做自动建号——本站角色/班级权限敏感，不能凭空发权限。
+ */
+function loginBySsoEmail({ email, userAgent = '' }) {
+  const key = String(email || '').trim().toLowerCase();
+  if (!key) throw new BusinessError('登录中心没有返回邮箱，无法匹配本站账号', 'SSO_NO_EMAIL');
+  const short = key.includes('@') ? key.split('@')[0] : key;
+
+  let account = repo.findByUsername(key) || repo.findByUsername(short);
+  let matchedBy = account ? 'username' : '';
+
+  if (!account) {
+    const supers = db.all(
+      'SELECT id FROM accounts WHERE role = ? AND deleted_at IS NULL LIMIT 2',
+      [ROLE.SUPER]
+    );
+    if (supers.length === 1) {
+      account = repo.findById(supers[0].id);
+      matchedBy = 'sole-super-admin';
+    }
+  }
+
+  if (!account) {
+    throw new BusinessError(
+      '该黄豆侠账号尚未绑定本站账号：请先用账号密码登录，或联系超级管理员把用户名改成该邮箱',
+      'SSO_NOT_BOUND'
+    );
+  }
+
+  assertUsable(account);
+  if (account.classId) {
+    const cls = db.get('SELECT id, deleted_at AS deletedAt FROM classes WHERE id = ?', [account.classId]);
+    if (!cls || cls.deletedAt) throw new BusinessError('所属班级已被删除，请联系超级管理员', 'CLASS_DELETED');
+  }
+
+  repo.touchLogin(account.id);
+  const tokens = issueSession(account, { userAgent });
+  return { ...buildProfile(account), ...tokens, matchedBy };
+}
+
 module.exports = {
   login,
+  loginBySsoEmail,
   refresh,
   logout,
   profileOf,

@@ -4,6 +4,7 @@ const { asyncHandler } = require('../../middleware/error');
 const { config } = require('../../config');
 const { ACCESS_COOKIE, REFRESH_COOKIE, cookieOptions } = require('../../core/security');
 const service = require('./auth.service');
+const sso = require('./auth.sso');
 
 function setAuthCookies(res, result) {
   res.cookie(ACCESS_COOKIE, result.accessToken, cookieOptions(config.accessTokenTtl));
@@ -20,6 +21,41 @@ function present(res, result) {
   const { accessToken, refreshToken, ...rest } = result;
   return res.json(rest);
 }
+
+/**
+ * GET /api/auth/sso —— 黄豆侠登录回调
+ * 浏览器从登录中心跳回来，带着 sso_token Cookie；校验通过后直接下发本站会话并跳首页。
+ * 失败一律 302 回登录页并带 sso_error，避免用户停在空白 JSON 上。
+ */
+const ssoLogin = asyncHandler(async (req, res) => {
+  const backToLogin = (msg) => res.redirect(302, `/login.html?sso_error=${encodeURIComponent(msg)}`);
+
+  const r = await sso.verify(req);
+  if (!r.ok) {
+    const msg =
+      r.code === 'no_session'
+        ? '尚未登录黄豆侠'
+        : r.code === 'sso_unreachable'
+          ? '无法连接登录中心，请稍后重试'
+          : '黄豆侠会话已失效，请重新登录';
+    return backToLogin(msg);
+  }
+
+  let result;
+  try {
+    result = service.loginBySsoEmail({
+      email: r.user && r.user.email,
+      userAgent: req.get('user-agent') || '',
+    });
+  } catch (err) {
+    return backToLogin((err && err.message) || '登录失败，请稍后重试');
+  }
+
+  setAuthCookies(res, result);
+  req.log.info('黄豆侠登录成功', { accountId: result.account.id, matchedBy: result.matchedBy });
+  const { accessToken, refreshToken, matchedBy, ...rest } = result;
+  return res.redirect(302, '/');
+});
 
 const login = asyncHandler(async (req, res) => {
   const body = parse(schemas.login, req.body);
@@ -51,4 +87,4 @@ const changePassword = asyncHandler(async (req, res) => {
   res.json({ ok: true, message: '密码已修改，请重新登录' });
 });
 
-module.exports = { login, refresh, logout, me, changePassword };
+module.exports = { login, ssoLogin, refresh, logout, me, changePassword };

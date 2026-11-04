@@ -8,6 +8,10 @@
 <meta name="description" content="班级积分管理：登录后可进行花名册导入、实时加减分、积分排行、积分排座、积分商城与成绩分析。" />
 <title>登录 · 班级积分管理</title>
 <link rel="stylesheet" href="./css/design-system.css" />
+<style>
+  .sso-split { display: flex; align-items: center; gap: 10px; margin: 14px 0 10px; color: var(--c-ink-2); font-size: 12px; }
+  .sso-split::before, .sso-split::after { content: ""; flex: 1; height: 1px; background: var(--c-line); }
+</style>
 </head>
 <body>
 
@@ -38,6 +42,8 @@
         </div>
         <div id="loginErr" class="err-text hidden"></div>
         <button id="btnLogin" class="btn btn-primary btn-block">登 录</button>
+        <div class="sso-split"><span>或</span></div>
+        <a class="btn btn-block" href="/api/auth/sso" style="text-decoration:none">用黄豆侠账号登录</a>
       </div>
 
       <div class="tips-box">
@@ -147,6 +153,14 @@
       document.getElementById('loginPwd').select();
     }
   }
+
+  /* 黄豆侠回调失败时，服务端会重定向回 /login.html?sso_error=... */
+  (function showSsoError() {
+    const msg = new URLSearchParams(location.search).get('sso_error');
+    if (!msg) return;
+    showError(msg);
+    try { history.replaceState(null, '', location.pathname); } catch (e) { /* 忽略 */ }
+  })();
 
   skipIfAuthed().then((redirected) => {
     if (redirected) return;

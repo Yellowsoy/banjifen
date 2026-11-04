@@ -10,6 +10,8 @@ const router = express.Router();
 const authLimiter = rateLimit({ windowMs: 5 * 60_000, max: config.authLoginRateMax, message: '尝试次数过多，请 5 分钟后再试' });
 
 router.post('/login', authLimiter, controller.login);
+/* 黄豆侠（SSO）登录回调：GET，直接由浏览器跳转过来 */
+router.get('/sso', controller.ssoLogin);
 router.post('/refresh', controller.refresh);
 router.post('/logout', controller.logout);
 router.get('/me', requireAuth(), controller.me);
