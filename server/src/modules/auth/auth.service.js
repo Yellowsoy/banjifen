@@ -138,17 +138,6 @@ function loginBySsoEmail({ email, ssoUser = null, userAgent = '' }) {
   let matchedBy = account ? 'username' : '';
 
   if (!account) {
-    const supers = db.all(
-      'SELECT id FROM accounts WHERE role = ? AND deleted_at IS NULL LIMIT 2',
-      [ROLE.SUPER]
-    );
-    if (supers.length === 1) {
-      account = repo.findById(supers[0].id);
-      matchedBy = 'sole-super-admin';
-    }
-  }
-
-  if (!account) {
     throw new BusinessError(
       '该账号尚未绑定本站账号：请先用账号密码登录，或联系超级管理员把用户名改成该邮箱',
       'SSO_NOT_BOUND'

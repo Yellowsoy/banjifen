@@ -60,18 +60,6 @@ router.post(
   }),
   controller.restoreClass
 );
-router.post(
-  '/classes/:id/transfer-owner',
-  trail({
-    module: 'super',
-    action: 'class.transferOwner',
-    targetType: 'class',
-    entity: { param: 'id', table: 'classes', nameField: 'name' },
-    summary: ({ before, body }) => `转移班级「${(before && before.name) || ''}」的班主任给成员 ${(body && body.memberId) || ''}`,
-  }),
-  controller.transferOwner
-);
-
 router.get('/accounts', controller.listAccounts);
 router.post(
   '/accounts',

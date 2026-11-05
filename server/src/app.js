@@ -47,6 +47,7 @@ function createApp({ pre = [], spaFallback } = {}) {
         "object-src 'none'",
         "base-uri 'self'",
         "frame-ancestors 'self'",
+        "form-action 'self'",
       ].join('; ')
     );
     if (config.isProd) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

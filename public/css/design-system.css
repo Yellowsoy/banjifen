@@ -698,7 +698,7 @@ tr.log-row { cursor: pointer; }
 .visit-top-row .p-name {
   flex: none; width: 96px; color: var(--c-ink-2);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: ui-monospace, monospace;
 }
 .visit-top-row .p-track {
   flex: 1; height: 8px; border-radius: var(--r-pill);
