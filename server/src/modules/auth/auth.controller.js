@@ -6,6 +6,20 @@ const { ACCESS_COOKIE, REFRESH_COOKIE, cookieOptions } = require('../../core/sec
 const service = require('./auth.service');
 const sso = require('./auth.sso');
 
+/**
+ * 本站对外地址（用于拼统一身份认证的回跳参数）。
+ * EdgeOne 内部域名（*.qcloudteo.com）不能出现在 redirect 里，
+ * 命中内部域名时回落到固定站点域名，可用 SITE_ORIGIN 覆盖。
+ */
+function selfOrigin(req) {
+  const proto = String(req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0].trim();
+  const host = String(req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
+  if (host && !/qcloudteo\.com|edgeone\.cool|localhost|127\.0\.0\.1/i.test(host)) {
+    return `${proto}://${host}`;
+  }
+  return String(process.env.SITE_ORIGIN || 'https://bj.5166966.xyz').replace(/\/+$/, '');
+}
+
 function setAuthCookies(res, result) {
   res.cookie(ACCESS_COOKIE, result.accessToken, cookieOptions(config.accessTokenTtl));
   res.cookie(REFRESH_COOKIE, result.refreshToken, cookieOptions(config.refreshTokenTtl, '/api/auth'));
@@ -35,9 +49,7 @@ const ssoLogin = asyncHandler(async (req, res) => {
     // 没有登录中心会话时直接带去登录页（带回到本站回调）：
     // 否则用户在「退出」之后点「统一身份认证」只会看到一句报错，永远进不去登录。
     if (r.code === 'no_session') {
-      const proto = String(req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0].trim();
-      const host = req.get('x-forwarded-host') || req.get('host') || '';
-      const back = `${proto}://${host}/api/auth/sso`;
+      const back = `${selfOrigin(req)}/api/auth/sso`;
       return res.redirect(302, `${sso.ssoOrigin()}/login?redirect=${encodeURIComponent(back)}`);
     }
     const msg =
@@ -90,10 +102,8 @@ const logout = asyncHandler(async (req, res) => {
      登录中心会清父域 sso_token 并吊销该账号全部会话，其它站点随即失效；
      纯账号密码登录（没有 sso_token）则只清本站，不多跳一次。 */
   const hasSso = !!(req.cookies && req.cookies.sso_token);
-  const proto = String(req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0].trim();
-  const host = req.get('x-forwarded-host') || req.get('host') || '';
-  const ssoLogout = hasSso && host
-    ? `${sso.ssoOrigin()}/logout?redirect=${encodeURIComponent(`${proto}://${host}/`)}`
+  const ssoLogout = hasSso
+    ? `${sso.ssoOrigin()}/logout?redirect=${encodeURIComponent(`${selfOrigin(req)}/`)}`
     : '';
   res.json({ ok: true, hasSso, ssoLogout });
 });
