@@ -13,8 +13,9 @@ function readAuth(req) {
   if (!payload) return null;
   /* 单点退出：统一身份认证登录的令牌必须同时带着父域 sso_token。
      用户在任何站点点了退出，登录中心都会清掉这张票；这里读不到即判未登录，
-     不必等 access token 自然过期，也不会把「已退出」的人留在站点里。 */
-  if (payload.via === 'sso' && !cookies[SSO_COOKIE]) return null;
+     不必等 access token 自然过期，也不会把「已退出」的人留在站点里。
+     升级前签发的令牌没有 via：按 sso 处理（更严格），但只有读不到 sso_token 才失效。 */
+  if (payload.via !== 'local' && !cookies[SSO_COOKIE]) return null;
   const account = require('../db').get('SELECT name, role, class_id AS classId FROM accounts WHERE id = ?', [payload.sub]);
   if (!account) return null;
   return {
