@@ -28,10 +28,11 @@ function classInfo(classId) {
   };
 }
 
-function issueSession(account, { userAgent = '' } = {}) {
+function issueSession(account, { userAgent = '', via = 'local' } = {}) {
   const sessionId = repo.newId('sess');
   const refreshToken = randomToken();
   const now = Date.now();
+  const source = via === 'sso' ? 'sso' : 'local';
   repo.createSession({
     id: sessionId,
     accountId: account.id,
@@ -41,12 +42,15 @@ function issueSession(account, { userAgent = '' } = {}) {
     createdAt: now,
     expiresAt: now + config.refreshTokenTtl * 1000,
     userAgent,
+    via: source,
   });
   const accessToken = signAccessToken({
     sub: account.id,
     role: account.role,
     classId: account.classId || null,
     sid: sessionId,
+    // 单点退出判定用：via=sso 的令牌要求请求同时带着父域 sso_token
+    via: source,
   });
   return { accessToken, refreshToken, sessionId };
 }
@@ -97,7 +101,8 @@ function refresh(refreshToken, userAgent = '') {
   const account = repo.findById(session.accountId);
   assertUsable(account);
   repo.revokeSession(session.id);
-  const tokens = issueSession(account, { userAgent });
+  // 续期沿用原会话的登录来源：SSO 登录的仍算 SSO，密码登录的仍算本地
+  const tokens = issueSession(account, { userAgent, via: session.via });
   return { ...buildProfile(account), ...tokens };
 }
 
@@ -160,7 +165,8 @@ function loginBySsoEmail({ email, ssoUser = null, userAgent = '' }) {
   }
 
   repo.touchLogin(account.id);
-  const tokens = issueSession(account, { userAgent });
+  // via='sso'：这张会话的来源是统一身份认证，父域 sso_token 消失时立即失效
+  const tokens = issueSession(account, { userAgent, via: 'sso' });
   return { ...buildProfile(account), ...tokens, matchedBy };
 }
 

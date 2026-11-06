@@ -18,10 +18,18 @@ let currentSection = 'account';
 /* ================= 通用 ================= */
 
 async function logout() {
+  let ssoLogout = '';
   try {
-    await api.post('/auth/logout');
+    const r = await api.post('/auth/logout');
+    ssoLogout = (r && r.ssoLogout) || '';
   } catch {
-    /* 忽略退出失败，仍要跳回登录页 */
+    /* 忽略退出失败，仍要继续退出 */
+  }
+  // 单点退出：浏览器还持有统一身份认证票据时，交给登录中心统一注销，
+  // 它会清父域 sso_token 并吊销该账号全部会话，其它站点随即失效
+  if (ssoLogout) {
+    window.location.replace(ssoLogout);
+    return;
   }
   window.location.replace('/login.html');
 }

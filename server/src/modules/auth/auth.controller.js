@@ -32,12 +32,18 @@ const ssoLogin = asyncHandler(async (req, res) => {
 
   const r = await sso.verify(req);
   if (!r.ok) {
+    // 没有登录中心会话时直接带去登录页（带回到本站回调）：
+    // 否则用户在「退出」之后点「统一身份认证」只会看到一句报错，永远进不去登录。
+    if (r.code === 'no_session') {
+      const proto = String(req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0].trim();
+      const host = req.get('x-forwarded-host') || req.get('host') || '';
+      const back = `${proto}://${host}/api/auth/sso`;
+      return res.redirect(302, `${sso.ssoOrigin()}/login?redirect=${encodeURIComponent(back)}`);
+    }
     const msg =
-      r.code === 'no_session'
-        ? '尚未通过统一身份认证'
-        : r.code === 'sso_unreachable'
-          ? '无法连接登录中心，请稍后重试'
-          : '统一身份认证会话已失效，请重新登录';
+      r.code === 'sso_unreachable'
+        ? '无法连接登录中心，请稍后重试'
+        : '统一身份认证会话已失效，请重新登录';
     return backToLogin(msg);
   }
 
@@ -80,7 +86,16 @@ const refresh = asyncHandler(async (req, res) => {
 const logout = asyncHandler(async (req, res) => {
   if (req.auth) service.logout(req.auth.sessionId);
   clearAuthCookies(res);
-  res.json({ ok: true });
+  /* 单点退出：浏览器还持有统一身份认证票据时，把登录中心的退出地址一并给前端。
+     登录中心会清父域 sso_token 并吊销该账号全部会话，其它站点随即失效；
+     纯账号密码登录（没有 sso_token）则只清本站，不多跳一次。 */
+  const hasSso = !!(req.cookies && req.cookies.sso_token);
+  const proto = String(req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0].trim();
+  const host = req.get('x-forwarded-host') || req.get('host') || '';
+  const ssoLogout = hasSso && host
+    ? `${sso.ssoOrigin()}/logout?redirect=${encodeURIComponent(`${proto}://${host}/`)}`
+    : '';
+  res.json({ ok: true, hasSso, ssoLogout });
 });
 
 const me = asyncHandler(async (req, res) => {

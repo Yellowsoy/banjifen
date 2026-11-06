@@ -2,12 +2,19 @@
 const { UnauthorizedError, ForbiddenError } = require('../core/errors');
 const { can } = require('../core/policy');
 const { ACCESS_COOKIE, CSRF_HEADER, verifyAccessToken } = require('../core/security');
+// 统一身份认证写在主域的会话票据；本站不解析它，只看「在不在」
+const SSO_COOKIE = 'sso_token';
 
 function readAuth(req) {
-  const token = req.cookies[ACCESS_COOKIE];
+  const cookies = req.cookies || {};
+  const token = cookies[ACCESS_COOKIE];
   if (!token) return null;
   const payload = verifyAccessToken(token);
   if (!payload) return null;
+  /* 单点退出：统一身份认证登录的令牌必须同时带着父域 sso_token。
+     用户在任何站点点了退出，登录中心都会清掉这张票；这里读不到即判未登录，
+     不必等 access token 自然过期，也不会把「已退出」的人留在站点里。 */
+  if (payload.via === 'sso' && !cookies[SSO_COOKIE]) return null;
   const account = require('../db').get('SELECT name, role, class_id AS classId FROM accounts WHERE id = ?', [payload.sub]);
   if (!account) return null;
   return {

@@ -44,15 +44,15 @@ function touchLogin(id) {
 
 function createSession(session) {
   db.run(
-    `INSERT INTO auth_sessions (id, account_id, token_hash, role, class_id, created_at, expires_at, user_agent)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [session.id, session.accountId, session.tokenHash, session.role, session.classId || null, session.createdAt, session.expiresAt, session.userAgent || '']
+    `INSERT INTO auth_sessions (id, account_id, token_hash, role, class_id, created_at, expires_at, user_agent, via)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [session.id, session.accountId, session.tokenHash, session.role, session.classId || null, session.createdAt, session.expiresAt, session.userAgent || '', session.via === 'sso' ? 'sso' : 'local']
   );
 }
 
 function findSessionByHash(tokenHash) {
   return db.get(
-    `SELECT id, account_id AS accountId, role, class_id AS classId, expires_at AS expiresAt, revoked_at AS revokedAt
+    `SELECT id, account_id AS accountId, role, class_id AS classId, expires_at AS expiresAt, revoked_at AS revokedAt, via
      FROM auth_sessions WHERE token_hash = ?`,
     [tokenHash]
   );

@@ -55,7 +55,8 @@ v2.1 新增三大能力：
 | 账号映射 | `username` = SSO 邮箱或其前缀；**全站只有一个超级管理员时自动绑定**；都匹配不上则拒绝 |
 | **权限要求** | **管理员身份由 SSO 决定**：`roles` 必须含 `admin` 或 `admin-bj`，否则回登录页报错；在 SSO 后台「用户 → 角色」中授予/收回 |
 | 为什么不自动建号 | 角色绑定班级与数据权限，SSO 只证明身份，不能代替业务授权 |
-| 代码位置 | `server/src/modules/auth/auth.sso.js`、`auth.controller.js`（`ssoLogin`）、`auth.service.js`（`loginBySsoEmail`） |
+| 单点退出 | `POST /api/auth/logout` 清本站会话；浏览器仍持有父域 `sso_token` 时返回 `ssoLogout`，前端跳 `https://sso.5166966.xyz/logout?redirect=<本站>`，由登录中心清父域票并吊销该账号全部会话。本站会话记录带 `via`（`sso` / `local`），`via=sso` 的令牌在请求读不到 `sso_token` 时立即失效 |
+| 代码位置 | `server/src/modules/auth/auth.sso.js`、`auth.controller.js`（`ssoLogin` / `logout`）、`auth.service.js`（`loginBySsoEmail`）、`server/src/middleware/auth.js`（`readAuth`） |
 
 ---
 
