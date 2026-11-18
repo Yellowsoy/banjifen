@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<meta name="theme-color" content="#3B6FF5" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="description" content="班级积分管理的隐私与 Cookie 说明：本站处理哪些信息、使用哪些 Cookie、第三方统计服务与信息保护措施。" />
+<meta name="robots" content="noindex" />
+<title>隐私与 Cookie 说明 · 班级积分管理</title>
+<link rel="stylesheet" href="./css/design-system.css" />
+<!-- 51.LA 性能监控 -->
+<script src="https://sdk.51.la/perf/js-sdk-perf.min.js" crossorigin="anonymous"></script>
+<script>
+  new LingQue.Monitor().init({ id: "3Rrer7CRfN7mJceK", sendSuspicious: true, sendSpaPv: true });
+</script>
+<style>
+  /* 阅读页：沿用设计系统变量，只补充长文排版所需的最小样式 */
+  body { background: var(--c-bg); }
+  .doc-wrap { max-width: 820px; margin: 0 auto; padding: 32px 18px 64px; }
+  .doc-card {
+    background: var(--c-surface); border: 1px solid var(--c-line);
+    border-radius: 16px; padding: 32px 34px 30px;
+    box-shadow: 0 1px 3px rgba(26, 34, 51, .05), 0 12px 32px -20px rgba(26, 34, 51, .18);
+  }
+  .doc-head { text-align: center; margin-bottom: 26px; }
+  .doc-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: var(--t-xs); font-weight: 600; letter-spacing: .08em;
+    color: var(--c-primary); background: var(--c-primary-50);
+    border-radius: 999px; padding: 5px 14px; margin-bottom: 14px;
+  }
+  .doc-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-primary); }
+  .doc-head h1 { font-size: clamp(21px, 3.4vw, 26px); font-weight: 700; letter-spacing: .04em; margin: 0 0 8px; color: var(--c-ink); }
+  .doc-sub { font-size: var(--t-xs); color: var(--c-ink-3); line-height: 1.9; }
+  .doc-sub .sep { opacity: .45; margin: 0 7px; }
+
+  .doc-card h2 {
+    display: flex; align-items: center; gap: 9px;
+    font-size: var(--t-sm); font-weight: 700; color: var(--c-ink);
+    margin: 30px 0 12px; padding-bottom: 9px;
+    border-bottom: 1px solid var(--c-line-2);
+  }
+  .doc-card h2:first-of-type { margin-top: 4px; }
+  .doc-card h2 .num {
+    flex: none; display: grid; place-items: center;
+    width: 21px; height: 21px; border-radius: 7px;
+    background: var(--c-primary-50); color: var(--c-primary);
+    font-size: 12px; font-weight: 700;
+  }
+  .doc-card p { margin: 10px 0; font-size: var(--t-sm); line-height: 1.95; color: var(--c-ink-2); }
+  .doc-card ul { margin: 10px 0; padding-left: 22px; }
+  .doc-card li { margin: 7px 0; font-size: var(--t-sm); line-height: 1.9; color: var(--c-ink-2); }
+  .doc-card li::marker { color: var(--c-ink-4); }
+  .doc-card b, .doc-card strong { color: var(--c-ink); font-weight: 600; }
+  .doc-card code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
+    color: var(--c-primary-600); background: var(--c-primary-50);
+    border-radius: 5px; padding: 1px 6px; word-break: break-all;
+  }
+
+  /* Cookie / 数据项清单 */
+  .kv-list { margin: 12px 0 4px; border-top: 1px solid var(--c-line-2); }
+  .kv {
+    display: grid; grid-template-columns: 176px 1fr; gap: 4px 16px;
+    padding: 11px 0; border-bottom: 1px solid var(--c-line-2);
+  }
+  .kv dt { font-size: 13px; line-height: 1.85; color: var(--c-ink); }
+  .kv dd { margin: 0; font-size: 13px; line-height: 1.85; color: var(--c-ink-2); }
+
+  .note {
+    background: var(--c-primary-50); border: 1px solid var(--c-primary-100);
+    border-left: 3px solid var(--c-primary);
+    padding: 12px 16px; border-radius: 10px;
+    font-size: 13px; line-height: 1.9; color: var(--c-ink-2); margin: 16px 0;
+  }
+  .note b { color: var(--c-primary-600); }
+  .note.warn {
+    background: var(--c-amber-50); border-color: #F7E0B5; border-left-color: var(--c-amber);
+    color: #6B5316;
+  }
+  .note.warn b { color: #A66A00; }
+
+  .doc-foot {
+    margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--c-line-2);
+    text-align: center; font-size: var(--t-xs); color: var(--c-ink-3); line-height: 2;
+  }
+  .doc-foot a { color: var(--c-primary); text-decoration: none; border-bottom: 1px dashed var(--c-primary-100); padding-bottom: 1px; }
+  .doc-foot a:hover { border-bottom-color: var(--c-primary); }
+  .doc-foot .sep { opacity: .4; margin: 0 8px; }
+  .disclaimer { max-width: 700px; margin: 16px auto 0; text-align: center; font-size: 11.5px; line-height: 1.95; color: var(--c-ink-4); }
+
+  @media (max-width: 560px) {
+    .doc-wrap { padding: 20px 12px 44px; }
+    .doc-card { padding: 22px 18px 20px; border-radius: 13px; }
+    .kv { grid-template-columns: 1fr; gap: 2px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-wrap">
+  <div class="doc-card">
+    <div class="doc-head">
+      <div class="doc-badge"><span class="dot"></span>隐私与 Cookie</div>
+      <h1>隐私与 Cookie 说明</h1>
+      <div class="doc-sub">适用站点：班级积分管理（含成绩查询页）<span class="sep">·</span>最近更新：2026-11-18</div>
+    </div>
+
+    <p>本站是供班主任与班级干部使用的班级积分管理工具，用于花名册维护、加减分记录、积分排行、积分商城兑换、积分排座与成绩管理；同时向家长提供凭查询口令的成绩与积分自助查询页。本站不面向公众开放注册，也不用于商业营销。本说明告知本站会处理哪些信息、使用哪些 Cookie 与本地存储，以及哪些信息会交由第三方处理。</p>
+
+    <h2><span class="num">一</span>本站处理哪些信息</h2>
+    <ul>
+      <li><b>账号信息</b>：账号名、口令的哈希值（bcrypt 加盐，不保存明文）、角色与所属班级、登录时间。如通过统一身份认证登录，还会接收该中心返回的账号标识与昵称。</li>
+      <li><b>学生与班级信息</b>：姓名、学号、性别、小组；以及由管理员选填的档案项——出生日期、家庭住址、家长姓名、家长联系电话及与本人关系、备用电话、备注。</li>
+      <li><b>积分与成绩</b>：加减分记录（分值、原因、操作人、时间）、积分兑换与礼品领取记录、考试与成绩录入、积分排座方案。</li>
+      <li><b>技术信息</b>：登录会话标识、IP 地址、浏览器标识（User-Agent），用于鉴权、失败锁定与操作审计。</li>
+    </ul>
+    <div class="note warn"><b>关于学生信息：</b>家长联系方式等档案项由管理员按需填写，用于班级日常沟通。查询页对家长联系方式做脱敏展示，且只展示所查询学生本人的数据，不展示班级名单与他人信息。</div>
+    <p>本站不采集身份证号、生物特征、精确位置等信息。学生档案中的敏感项请由班主任按学校要求审慎填写，非必要不填。</p>
+
+    <h2><span class="num">二</span>Cookie 与本地存储</h2>
+    <p>本站只在完成登录与会话校验所必需的范围内写入 Cookie，全部为第一方 Cookie，不包含广告标识。</p>
+    <dl class="kv-list">
+      <div class="kv">
+        <dt><code>bj_at</code></dt>
+        <dd>访问凭证，<code>HttpOnly</code>，默认有效期 30 分钟，用于每次请求的身份校验。浏览器脚本无法读取。</dd>
+      </div>
+      <div class="kv">
+        <dt><code>bj_rt</code></dt>
+        <dd>刷新凭证，仅作用于 <code>/api/auth</code> 路径，默认有效期 14 天，用于访问凭证过期后自动续期。退出登录即清除。</dd>
+      </div>
+      <div class="kv">
+        <dt><code>sso_token</code></dt>
+        <dd>统一身份认证中心写在父域的票据，用于单点登录与单点退出。本站只校验其有效性，不解析其内容。</dd>
+      </div>
+      <div class="kv">
+        <dt><code>localStorage</code></dt>
+        <dd>保存界面偏好（如筛选条件、折叠状态、显示选项），仅存于本机浏览器，不会主动上传。</dd>
+      </div>
+    </dl>
+    <p>本站<b>不使用</b>广告追踪 Cookie，也不设置跨站营销标识。清除浏览器数据即可删除本地偏好；退出登录会立即注销本站会话。</p>
+
+    <h2><span class="num">三</span>成绩查询页与查询口令</h2>
+    <ul>
+      <li>查询页<b>无需登录</b>，凭班主任发放的查询口令访问。口令可设置有效期与失效开关，班主任可随时停用。</li>
+      <li>口令的校验方式由班主任设定：学号＋姓名、家长手机号后 4 位，或仅凭口令。校验信息仅用于本次查询，不做额外留存。</li>
+      <li>查询页只返回所查询学生本人的数据，不提供班级名单、他人积分或他人成绩。</li>
+    </ul>
+    <div class="note"><b>提示：</b>查询口令等同于该班级数据的访问钥匙，请勿公开转发。若口令可能外泄，请联系班主任在后台重新生成或停用。</div>
+
+    <h2><span class="num">四</span>第三方服务与信息共享</h2>
+    <p>本站使用 <b>51.LA</b> 提供的性能与访问统计服务，用于了解页面加载性能与访问情况。该服务由第三方在页面内运行脚本，可能获取访问时间、页面地址、浏览器与设备类型、性能指标等信息。该脚本不参与登录鉴权、口令校验与业务数据读写，也不读取账号、学生或成绩信息。</p>
+    <p>此外，本站另有一套<b>自建访问统计</b>，仅在服务端记录去重后的访问量。为贯彻最小化原则，该统计：</p>
+    <ul>
+      <li>只保存由 IP 与浏览器标识加<b>当日盐值</b>计算出的匿名指纹，<b>不落库原始 IP</b>，且指纹跨天不可关联；</li>
+      <li>路径只保留页面名，<b>丢弃查询串</b>——查询口令出现在网址中，绝不入库；</li>
+      <li>只统计页面访问，不记录接口请求、静态资源与已知爬虫。</li>
+    </ul>
+    <p>除上述统计服务与统一身份认证中心（同属一个运维主体，用于身份核验与单点退出）外，本站不会向其他第三方出售、出租或以营销为目的提供您的信息。</p>
+
+    <h2><span class="num">五</span>信息的保存与保护</h2>
+    <ul>
+      <li>登录口令使用 <b>bcrypt</b> 加盐哈希存储，任何情况下不以明文保存或回显。</li>
+      <li>全站强制 HTTPS 传输；访问凭证短期有效并自动续期，退出登录即吊销会话。</li>
+      <li>关键操作（加减分、成员变更、成绩录入、后台设置等）均记录操作日志，含操作人、时间、目标与结果，便于事后追溯。</li>
+      <li>数据保存在云平台数据库中，访问须经服务端鉴权；接口响应不做公开缓存。</li>
+    </ul>
+
+    <h2><span class="num">六</span>说明的适用范围</h2>
+    <p>本说明描述本站当前的技术实现。账号与班级信息由班主任及学校相关人员在内部管理；本站不设对外联系渠道，也不接收通过本页面提交的个人信息或漏洞报告。请勿进行主动扫描、口令爆破或越权测试。</p>
+
+    <div class="doc-foot">
+      <a href="/">返回首页</a><span class="sep">·</span><a href="/query.html">成绩查询</a><span class="sep">·</span>班级积分管理
+    </div>
+  </div>
+  <div class="disclaimer">本说明仅描述本站当前的技术实现，不构成等级保护测评结论或法律意见。系统属性与合规义务由运营方认定。</div>
+</div>
+
+</body>
+</html>
