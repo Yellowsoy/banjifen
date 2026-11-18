@@ -2,7 +2,7 @@
 const { parse, schemas } = require('../../core/validation');
 const { asyncHandler } = require('../../middleware/error');
 const { config } = require('../../config');
-const { ACCESS_COOKIE, REFRESH_COOKIE, cookieOptions } = require('../../core/security');
+const { ACCESS_COOKIE, REFRESH_COOKIE, cookieOptions, verifyAccessToken } = require('../../core/security');
 const service = require('./auth.service');
 const sso = require('./auth.sso');
 
@@ -109,6 +109,19 @@ const logout = asyncHandler(async (req, res) => {
 });
 
 const me = asyncHandler(async (req, res) => {
+  /* 单点有效性复核：本站 access token 还没到 exp，但登录中心会话可能已在别处
+     过期/退出，父域 sso_token Cookie 也还残留在浏览器里。登录页启动时调 /me，
+     这里对「统一身份认证来源」的会话真实验一次票；失效即清本站会话并返回 401，
+     避免已失效的身份在登录页被 skipIfAuthed 误判为「已登录」。 */
+  const at = (req.cookies && req.cookies[ACCESS_COOKIE]) || '';
+  const payload = verifyAccessToken(at);
+  if (payload && payload.via !== 'local' && req.cookies && req.cookies.sso_token) {
+    const r = await sso.verify(req);
+    if (!r.ok) {
+      clearAuthCookies(res);
+      return res.status(401).json({ error: { code: 'SESSION_EXPIRED', message: '登录状态已失效，请重新登录' } });
+    }
+  }
   res.json(service.profileOf(req.auth.accountId));
 });
 
