@@ -115,22 +115,6 @@ function createApp({ pre = [], spaFallback } = {}) {
     res.json({ ok: true, warmed: true, time: Date.now() });
   });
 
-  app.use(notFound);
-
-  // 前端为单页应用：非 /api 的 GET 请求回退到 index.html
-  app.use((req, res, next) => {
-    if (req.method !== 'GET' || req.path.startsWith('/api/')) return next();
-    if (spaFallback) return spaFallback(req, res);
-    return res.sendFile(path.join(config.publicDir, 'index.html'));
-  });
-
-  app.use(errorHandler);
-  return app;
-}
-
-module.exports = { createApp };
-
-
   // 每日冷备份：读 Blob 快照 -> gzip -> PUT 私有 GitHub 仓库（主存储仍是 Blob）
   // 触发需 BACKUP_SECRET：header x-backup-secret 或 ?secret=。未配置密钥则拒绝。
   app.get('/api/cron/backup', async (req, res) => {
@@ -145,3 +129,18 @@ module.exports = { createApp };
       res.status(500).json({ ok: false, message: '备份失败：' + String((e && e.message) || e).slice(0, 200) });
     }
   });
+
+  app.use(notFound);
+
+  // 前端为单页应用：非 /api 的 GET 请求回退到 index.html
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api/')) return next();
+    if (spaFallback) return spaFallback(req, res);
+    return res.sendFile(path.join(config.publicDir, 'index.html'));
+  });
+
+  app.use(errorHandler);
+  return app;
+}
+
+module.exports = { createApp };
