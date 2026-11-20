@@ -129,3 +129,19 @@ function createApp({ pre = [], spaFallback } = {}) {
 }
 
 module.exports = { createApp };
+
+
+  // 每日冷备份：读 Blob 快照 -> gzip -> PUT 私有 GitHub 仓库（主存储仍是 Blob）
+  // 触发需 BACKUP_SECRET：header x-backup-secret 或 ?secret=。未配置密钥则拒绝。
+  app.get('/api/cron/backup', async (req, res) => {
+    const secret = String(process.env.BACKUP_SECRET || '');
+    const given = String(req.get('x-backup-secret') || req.query.secret || '');
+    if (!secret || given !== secret) return res.status(401).json({ ok: false, message: 'unauthorized' });
+    try {
+      const { runBackup } = require('./modules/backup/backup.service');
+      const result = await runBackup();
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ ok: false, message: '备份失败：' + String((e && e.message) || e).slice(0, 200) });
+    }
+  });
