@@ -8,7 +8,7 @@
  * 安全：token 只从环境变量 GH_BACKUP_TOKEN 读；触发需 BACKUP_SECRET。
  */
 const zlib = require('node:zlib');
-const db = require('./index');
+const db = require('../../db');
 
 const GH_REPO = process.env.GH_BACKUP_REPO || 'Yellowsoy/bj-data';
 const GH_BRANCH = 'main';
